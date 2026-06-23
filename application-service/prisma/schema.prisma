@@ -1,0 +1,68 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum ApplicationStage {
+  SAVED
+  APPLIED
+  ONLINE_ASSESSMENT
+  TECHNICAL_INTERVIEW
+  MANAGER_ROUND
+  HR_ROUND
+  OFFER
+  REJECTED
+  WITHDRAWN
+}
+
+model Application {
+  id             String           @id @default(uuid())
+  userId         String
+  company        String
+  jobTitle       String
+  location       String?
+  jobUrl         String?
+  sourcePlatform String
+  stage          ApplicationStage @default(SAVED)
+  salaryRange    String?
+  notes          String?
+  resumeId       String?
+  resume         Resume?          @relation(fields: [resumeId], references: [id])
+  interviews     Interview[]
+  appliedAt      DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([stage])
+  @@index([userId, stage])
+}
+
+model Resume {
+  id           String        @id @default(uuid())
+  userId       String
+  versionName  String
+  fileUrl      String
+  textSnippet  String?
+  applications Application[]
+  createdAt    DateTime      @default(now())
+
+  @@index([userId])
+}
+
+model Interview {
+  id            String      @id @default(uuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  stageName     String
+  scheduledAt   DateTime?
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([applicationId])
+}

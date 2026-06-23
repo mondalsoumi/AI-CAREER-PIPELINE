@@ -1,0 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: var(--bg);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+  }
+}
+
+:root {
+  --bg: #f6f4ef;
+  --surface: #ffffff;
+
+  --primary: #1f4d3a;
+  --primary-hover: #173a2c;
+
+  --accent: #b08968;
+
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+
+  --border: #e5e7eb;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-4 py-3 font-semibold rounded-lg text-white transition-all;
+
+    background-color: var(--primary);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--primary-hover);
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-150;
+
+    background: white;
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+
+  .btn-secondary:hover {
+    background: #fafaf8;
+  }
+
+  .input {
+    @apply w-full px-4 py-3 bg-white rounded-lg border outline-none transition-all;
+
+    border-color: var(--border);
+  }
+
+  .input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(31, 77, 58, 0.12);
+  }
+
+  .label {
+    @apply block text-xs font-semibold mb-2 uppercase tracking-[0.12em];
+
+    color: var(--text-secondary);
+  }
+
+  .card {
+    @apply bg-white rounded-xl p-4 border transition-all duration-200;
+
+    border-color: var(--border);
+  }
+
+  .card:hover {
+    border-color: #d1d5db;
+    transform: translateY(-1px);
+  }
+}
