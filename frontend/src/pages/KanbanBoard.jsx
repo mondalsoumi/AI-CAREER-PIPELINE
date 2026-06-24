@@ -1,3 +1,5 @@
+import AppHeader from '../components/AppHeader';
+import { NavLink } from 'react-router-dom';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
@@ -542,74 +544,11 @@ export default function KanbanBoard({ onLogout }) {
     <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--bg)' }}>
 
       {/* Top nav */}
-      <header className="flex-shrink-0 bg-white border-b border-gray-200 px-8 py-5">
-        <div className="flex items-center justify-between gap-4">
-
-          {/* Left: wordmark + stats */}
-          <div className="flex items-center gap-6 min-w-0">
-            <div className="flex-shrink-0">
-              <p className="text-[11px] tracking-[0.25em] uppercase font-semibold" style={{ color: 'var(--accent)' }}>
-                AI Career Pipeline
-              </p>
-              <h1 className="text-xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-                Application Dashboard
-              </h1>
-            </div>
-            <div className="hidden sm:block h-4 w-px bg-gray-200" />
-            {!loading && !fetchError && <StatsBar apps={allApps} />}
-          </div>
-
-          {/* Right: search + add + refresh + logout */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="relative hidden md:block">
-              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400"
-                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                id="kanban-search"
-                type="text"
-                className="input pl-8 pr-3 py-1.5 w-44 text-xs"
-                placeholder="Search…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              {search && (
-                <button onClick={() => setSearch('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
-                  aria-label="Clear search">
-                  ×
-                </button>
-              )}
-            </div>
-
-            <button id="add-application-btn" className="btn-primary text-sm px-4 py-2" onClick={() => setShowModal(true)}>
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add
-            </button>
-
-            <button id="kanban-refresh" className="btn-secondary text-sm px-4 py-2"
-              onClick={fetchApps} disabled={loading} title="Refresh">
-              <svg className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`}
-                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-
-            <div className="h-4 w-px bg-gray-200" />
-
-            <button id="logout-btn"
-              className="text-xs font-medium transition-colors px-1 text-gray-400 hover:text-gray-700"
-              onClick={handleLogout}>
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppHeader onLogout={handleLogout}>
+        {!loading && !fetchError && (
+          <StatsBar apps={allApps} />
+        )}
+      </AppHeader>
 
       {/* Error banner */}
       {fetchError && (

@@ -30,6 +30,7 @@ export default function LoginPage({ onLogin }) {
       });
 
       const data = await res.json();
+      console.log('LOGIN RESPONSE:', data);
 
       if (!res.ok) {
         setError(
@@ -41,6 +42,7 @@ export default function LoginPage({ onLogin }) {
       }
 
       const token = data.token ?? data.data?.token;
+      const userId = data.user?.id ?? data.data?.user?.id;
 
       if (!token) {
         setError('Login succeeded but no token was returned.');
@@ -48,6 +50,11 @@ export default function LoginPage({ onLogin }) {
       }
 
       localStorage.setItem('token', token);
+
+      if (userId) {
+        localStorage.setItem('userId', userId);
+      }
+
       onLogin();
     } catch {
       setError(
