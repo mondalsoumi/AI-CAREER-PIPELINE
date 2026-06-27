@@ -1,234 +1,174 @@
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-
+import { useEffect, useState } from 'react'
+import AppHeader from '../components/AppHeader'
 import {
-    ResponsiveContainer,
-    LineChart,
-    Line,
-    XAxis,
-    YAxis,
-    Tooltip,
-    CartesianGrid,
-    PieChart,
-    Pie,
-    Cell,
-    BarChart,
-    Bar,
-    Legend,
-} from 'recharts';
+    ResponsiveContainer, LineChart, Line, XAxis, YAxis,
+    Tooltip, CartesianGrid, PieChart, Pie, Cell,
+    BarChart, Bar, Legend,
+} from 'recharts'
 
-import AppHeader from '../components/AppHeader';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
-const COLORS = [
-    '#1F4D3A',
-    '#B08968',
-    '#52796F',
-    '#354F52',
-    '#84A98C',
-];
+const COLORS = ['#1F4D3A', '#B08968', '#52796F', '#354F52', '#84A98C']
 
 export default function AnalyticsPage({ onLogout }) {
-    const [loading, setLoading] = useState(true);
-    const [analytics, setAnalytics] = useState(null);
-    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(true)
+    const [analytics, setAnalytics] = useState(null)
+    const [error, setError] = useState('')
 
     useEffect(() => {
         async function fetchAnalytics() {
             try {
-                const userId = localStorage.getItem('userId');
+                const token = localStorage.getItem('token')
 
-                const response = await axios.get(
-                    'http://localhost:8003/analytics',
-                    {
-                        headers: {
-                            'x-user-id': userId,
-                        },
-                    }
-                );
+                // FIXED: go through API gateway on port 8000, not directly to port 8003
+                // Gateway validates JWT and injects x-user-id header automatically
+                const res = await fetch(`${API_BASE}/api/analytics`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                })
 
-                setAnalytics(response.data.data);
+                if (res.status === 401) {
+                    localStorage.removeItem('token')
+                    onLogout()
+                    return
+                }
+
+                const data = await res.json()
+                if (!res.ok) throw new Error(data.error || 'Failed to load analytics')
+
+                setAnalytics(data.data)
             } catch (err) {
-                setError(
-                    err.response?.data?.error ||
-                    'Failed to load analytics.'
-                );
+                setError(err.message || 'Failed to load analytics.')
             } finally {
-                setLoading(false);
+                setLoading(false)
             }
         }
 
-        fetchAnalytics();
-    }, []);
+        fetchAnalytics()
+    }, [onLogout])
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin h-10 w-10 border-4 border-gray-300 border-t-transparent rounded-full" />
+            <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
+                <AppHeader onLogout={onLogout} title="Analytics" />
+                <div className="flex items-center justify-center h-64">
+                    <div className="animate-spin h-8 w-8 border-4 border-gray-200 border-t-transparent rounded-full" />
+                </div>
             </div>
-        );
+        )
     }
 
     if (error) {
         return (
-            <div className="p-8 text-red-600">
-                {error}
+            <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
+                <AppHeader onLogout={onLogout} title="Analytics" />
+                <div className="p-8">
+                    <div className="bg-red-50 border border-red-200 rounded-lg px-5 py-4 text-red-700 text-sm">{error}</div>
+                </div>
             </div>
-        );
+        )
     }
 
-    const monthlyData = Object.entries(
-        analytics.monthlyTrends || {}
-    ).map(([month, count]) => ({
-        month,
-        count,
-    }));
-
-    const sourceData = Object.entries(
-        analytics.sourceBreakdown || {}
-    ).map(([name, value]) => ({
-        name,
-        value,
-    }));
-
-    const stageData = Object.entries(
-        analytics.stageBreakdown || {}
-    ).map(([stage, count]) => ({
-        stage,
-        count,
-    }));
-
-    const resumeData = Object.entries(
-        analytics.resumeBreakdown || {}
-    ).map(([resumeId, stats]) => ({
-        resumeId: resumeId.slice(-8),
+    const monthlyData = Object.entries(analytics.monthlyTrends || {}).map(([month, count]) => ({ month, count }))
+    const sourceData = Object.entries(analytics.sourceBreakdown || {}).map(([name, value]) => ({ name, value }))
+    const stageData = Object.entries(analytics.stageBreakdown || {}).map(([stage, count]) => ({ stage, count }))
+    const resumeData = Object.entries(analytics.resumeBreakdown || {}).map(([id, stats]) => ({
+        resumeId: id.slice(-8),
         total: stats.total,
         interviews: stats.interviews,
         offers: stats.offers,
-    }));
+    }))
 
     return (
-        <div
-            className="min-h-screen"
-            style={{ backgroundColor: 'var(--bg)' }}
-        >
-            <AppHeader onLogout={onLogout} />
+        <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
+            <AppHeader onLogout={onLogout} title="Analytics" />
 
             <div className="p-8">
 
-                <div className="grid grid-cols-4 gap-6 mb-8">
-
-                    <StatCard
-                        title="Applications"
-                        value={analytics.totalApplications}
-                    />
-
-                    <StatCard
-                        title="Interview Rate"
-                        value={`${analytics.interviewRate}%`}
-                    />
-
-                    <StatCard
-                        title="Offer Rate"
-                        value={`${analytics.offerRate}%`}
-                    />
-
-                    <StatCard
-                        title="Rejection Rate"
-                        value={`${analytics.rejectionRate}%`}
-                    />
+                {/* Stat cards */}
+                <div className="grid grid-cols-4 gap-4 mb-8">
+                    <StatCard title="Total applications" value={analytics.totalApplications} />
+                    <StatCard title="Interview rate" value={`${analytics.interviewRate}%`} />
+                    <StatCard title="Offer rate" value={`${analytics.offerRate}%`} />
+                    <StatCard title="Rejection rate" value={`${analytics.rejectionRate}%`} />
                 </div>
 
+                {/* Charts */}
                 <div className="grid grid-cols-2 gap-6">
 
-                    <ChartCard title="Applications by Month">
-                        <ResponsiveContainer width="100%" height={320}>
+                    <ChartCard title="Applications by month">
+                        <ResponsiveContainer width="100%" height={300}>
                             <LineChart data={monthlyData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="month" />
-                                <YAxis />
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                                <YAxis tick={{ fontSize: 11 }} />
                                 <Tooltip />
-                                <Line
-                                    type="monotone"
-                                    dataKey="count"
-                                    stroke="#1F4D3A"
-                                />
+                                <Line type="monotone" dataKey="count" stroke="#1F4D3A" strokeWidth={2} dot={{ r: 3 }} />
                             </LineChart>
                         </ResponsiveContainer>
                     </ChartCard>
 
-                    <ChartCard title="Source Breakdown">
-                        <ResponsiveContainer width="100%" height={320}>
+                    <ChartCard title="Source breakdown">
+                        <ResponsiveContainer width="100%" height={300}>
                             <PieChart>
-                                <Pie
-                                    data={sourceData}
-                                    dataKey="value"
-                                    nameKey="name"
-                                >
-                                    {sourceData.map((_, index) => (
-                                        <Cell
-                                            key={index}
-                                            fill={COLORS[index % COLORS.length]}
-                                        />
-                                    ))}
+                                <Pie data={sourceData} dataKey="value" nameKey="name" outerRadius={110} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                                    {sourceData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                 </Pie>
                                 <Tooltip />
                             </PieChart>
                         </ResponsiveContainer>
                     </ChartCard>
 
-                    <ChartCard title="Hiring Funnel">
-                        <ResponsiveContainer width="100%" height={320}>
+                    <ChartCard title="Hiring funnel">
+                        <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={stageData}>
-                                <XAxis dataKey="stage" />
-                                <YAxis />
+                                <XAxis dataKey="stage" tick={{ fontSize: 10 }} />
+                                <YAxis tick={{ fontSize: 11 }} />
                                 <Tooltip />
-                                <Bar dataKey="count" fill="#1F4D3A" />
+                                <Bar dataKey="count" fill="#1F4D3A" radius={[3, 3, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </ChartCard>
 
-                    <ChartCard title="Resume Performance">
-                        <ResponsiveContainer width="100%" height={320}>
-                            <BarChart data={resumeData}>
-                                <XAxis dataKey="resumeId" />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
-                                <Bar dataKey="total" fill="#1F4D3A" />
-                                <Bar dataKey="interviews" fill="#B08968" />
-                                <Bar dataKey="offers" fill="#52796F" />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <ChartCard title="Resume performance">
+                        {resumeData.length === 0 ? (
+                            <div className="flex items-center justify-center h-64 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                No resume data yet. Link resumes to applications to see performance.
+                            </div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={resumeData}>
+                                    <XAxis dataKey="resumeId" tick={{ fontSize: 10 }} />
+                                    <YAxis tick={{ fontSize: 11 }} />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Bar dataKey="total" fill="#1F4D3A" radius={[3, 3, 0, 0]} />
+                                    <Bar dataKey="interviews" fill="#B08968" radius={[3, 3, 0, 0]} />
+                                    <Bar dataKey="offers" fill="#52796F" radius={[3, 3, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
                     </ChartCard>
 
                 </div>
             </div>
         </div>
-    );
+    )
 }
 
 function StatCard({ title, value }) {
     return (
         <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <p className="text-sm text-gray-500">
-                {title}
-            </p>
-
-            <p className="text-3xl font-bold mt-2">
-                {value}
-            </p>
+            <p className="text-xs uppercase tracking-wide font-medium" style={{ color: 'var(--text-secondary)' }}>{title}</p>
+            <p className="text-3xl font-bold mt-2" style={{ color: 'var(--text-primary)' }}>{value}</p>
         </div>
-    );
+    )
 }
 
 function ChartCard({ title, children }) {
     return (
         <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <h3 className="font-semibold mb-4">
-                {title}
-            </h3>
-
+            <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>{title}</h3>
             {children}
         </div>
-    );
+    )
 }

@@ -16,7 +16,7 @@ services:
       - ./postgres-init:/docker-entrypoint-initdb.d
     networks:
       - app-network
-
+    
   # Cache and Event Broker
   redis:
     image: redis:7-alpine
@@ -142,11 +142,28 @@ services:
       - api-gateway
     networks:
       - app-network
+  #minio (for storage)
+  minio:
+    image: minio/minio:latest
+    container_name: ai-career-minio
+    restart: always
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - app-network
 
 volumes:
   postgres_data:
   redis_data:
-
+  minio_data:
 networks:
   app-network:
     driver: bridge
+  

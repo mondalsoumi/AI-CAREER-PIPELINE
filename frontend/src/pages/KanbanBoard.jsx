@@ -1,11 +1,8 @@
 import AppHeader from '../components/AppHeader';
-import { NavLink } from 'react-router-dom';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-
-// ─── Stage definitions ────────────────────────────────────────────────────────
 
 const STAGES = [
   { id: 'SAVED', label: 'Saved', color: '#B08968' },
@@ -21,14 +18,10 @@ const STAGES = [
 
 const STAGE_IDS = STAGES.map((s) => s.id);
 
-const REQUIRED_FIELDS = ['company', 'jobTitle', 'sourcePlatform'];
-
 const SOURCE_PLATFORMS = [
   'LinkedIn', 'Naukri', 'Wellfound', 'Indeed', 'Glassdoor',
   'Instahyre', 'Company Website', 'Referral', 'Manual', 'Other',
 ];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function authHeaders() {
   const token = localStorage.getItem('token');
@@ -54,25 +47,14 @@ function groupByStage(apps) {
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
-
 function Toast({ toasts }) {
   return (
     <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none">
       {toasts.map((t) => (
-        <div
-          key={t.id}
-          className={`
-            pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-md border text-sm font-medium shadow-sm
-            ${t.type === 'error'
-              ? 'bg-red-50 border-red-200 text-red-700'
-              : 'bg-white border-gray-200 text-gray-800'
-            }
-          `}
-        >
+        <div key={t.id} className={`pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-md border text-sm font-medium shadow-sm ${t.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-gray-200 text-gray-800'}`}>
           {t.type === 'error' ? (
             <svg className="w-4 h-4 flex-shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             </svg>
           ) : (
             <svg className="w-4 h-4 flex-shrink-0 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,7 +79,6 @@ function useToast() {
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
-
 function SkeletonCard() {
   return (
     <div className="bg-white border border-gray-100 rounded-md p-3 mb-2 animate-pulse">
@@ -108,11 +89,9 @@ function SkeletonCard() {
   );
 }
 
-// ─── Application Card ─────────────────────────────────────────────────────────
-
+// ─── App Card ─────────────────────────────────────────────────────────────────
 function AppCard({ app, index, stageColor }) {
   const date = formatDate(app.createdAt);
-
   return (
     <Draggable draggableId={app.id} index={index}>
       {(provided, snapshot) => (
@@ -121,33 +100,21 @@ function AppCard({ app, index, stageColor }) {
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           className={`card mb-2 transition-shadow ${snapshot.isDragging ? 'shadow-md rotate-1 border-gray-300' : ''}`}
-          style={{
-            ...provided.draggableProps.style,
-            borderLeft: `2px solid ${stageColor}`,
-          }}
+          style={{ ...provided.draggableProps.style, borderLeft: `2px solid ${stageColor}` }}
         >
-          {/* Company */}
           <p className="text-base font-semibold truncate leading-tight" style={{ color: 'var(--text-primary)' }}>
             {app.company}
           </p>
-
-          {/* Job title */}
           <p className="text-sm truncate mt-1 leading-tight" style={{ color: 'var(--text-secondary)' }}>
             {app.jobTitle}
           </p>
-
-          {/* Footer row */}
           <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
             {app.sourcePlatform && (
               <span className="text-[10px] font-medium uppercase tracking-wide truncate text-gray-400">
                 {app.sourcePlatform}
               </span>
             )}
-            {date && (
-              <span className="text-[10px] text-gray-300 flex-shrink-0 ml-2">
-                {date}
-              </span>
-            )}
+            {date && <span className="text-[10px] text-gray-300 flex-shrink-0 ml-2">{date}</span>}
           </div>
         </div>
       )}
@@ -155,60 +122,33 @@ function AppCard({ app, index, stageColor }) {
   );
 }
 
-// ─── Kanban Column ────────────────────────────────────────────────────────────
-
+// ─── Column ───────────────────────────────────────────────────────────────────
 function Column({ stage, apps, loading }) {
   return (
     <div className="flex flex-col w-72 flex-shrink-0">
-      {/* Header */}
-      <div
-        className="bg-white border border-gray-200 rounded-t-md px-3 pt-3 pb-0"
-        style={{ borderTop: `2px solid ${stage.color}` }}
-      >
+      <div className="bg-white border border-gray-200 rounded-t-md px-3 pt-3 pb-0" style={{ borderTop: `2px solid ${stage.color}` }}>
         <div className="flex items-center justify-between pb-2.5">
-          <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-            {stage.label}
-          </span>
-          <span
-            className="text-xs font-semibold px-2.5 py-1 rounded-full min-w-[28px] text-center"
-            style={{ backgroundColor: `${stage.color}18`, color: stage.color }}
-          >
+          <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{stage.label}</span>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full min-w-[28px] text-center" style={{ backgroundColor: `${stage.color}18`, color: stage.color }}>
             {loading ? '…' : apps.length}
           </span>
         </div>
       </div>
-
-      {/* Drop zone */}
       <Droppable droppableId={stage.id}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`
-              flex-1 min-h-24 p-2 border-x border-b border-gray-200 rounded-b-md
-              transition-colors duration-150
-              ${snapshot.isDraggingOver ? 'bg-gray-50' : 'bg-gray-50/50'}
-            `}
+            className={`flex-1 min-h-24 p-2 border-x border-b border-gray-200 rounded-b-md transition-colors duration-150 ${snapshot.isDraggingOver ? 'bg-gray-50' : 'bg-gray-50/50'}`}
           >
             {loading ? (
-              <>
-                <SkeletonCard />
-                <SkeletonCard />
-              </>
+              <><SkeletonCard /><SkeletonCard /></>
             ) : apps.length === 0 ? (
-              <div
-                className={`
-                  flex items-center justify-center h-16 rounded border border-dashed border-gray-200 text-[10px]
-                  text-gray-300 transition-colors
-                  ${snapshot.isDraggingOver ? 'border-gray-300 text-gray-400' : ''}
-                `}
-              >
+              <div className={`flex items-center justify-center h-16 rounded border border-dashed border-gray-200 text-[10px] text-gray-300 transition-colors ${snapshot.isDraggingOver ? 'border-gray-300 text-gray-400' : ''}`}>
                 Drop here
               </div>
             ) : (
-              apps.map((app, i) => (
-                <AppCard key={app.id} app={app} index={i} stageColor={stage.color} />
-              ))
+              apps.map((app, i) => <AppCard key={app.id} app={app} index={i} stageColor={stage.color} />)
             )}
             {provided.placeholder}
           </div>
@@ -219,52 +159,28 @@ function Column({ stage, apps, loading }) {
 }
 
 // ─── Stats Bar ────────────────────────────────────────────────────────────────
-
+// Now sits INSIDE the green header as a second row — white text on green bg
 function StatsBar({ apps }) {
-  const total = apps.length;
-  const inProgress = apps.filter((a) =>
-    ['ONLINE_ASSESSMENT', 'TECHNICAL_INTERVIEW', 'MANAGER_ROUND', 'HR_ROUND'].includes(a.stage)
-  ).length;
-  const offers = apps.filter((a) => a.stage === 'OFFER').length;
-  const rejections = apps.filter((a) => a.stage === 'REJECTED').length;
-
   const stats = [
-    { label: 'Total', value: total },
-    { label: 'In progress', value: inProgress },
-    { label: 'Offers', value: offers },
-    { label: 'Rejections', value: rejections },
+    { label: 'Total', value: apps.length },
+    { label: 'In progress', value: apps.filter((a) => ['ONLINE_ASSESSMENT', 'TECHNICAL_INTERVIEW', 'MANAGER_ROUND', 'HR_ROUND'].includes(a.stage)).length },
+    { label: 'Offers', value: apps.filter((a) => a.stage === 'OFFER').length },
+    { label: 'Rejections', value: apps.filter((a) => a.stage === 'REJECTED').length },
   ];
-
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-6 mt-3 pt-3 border-t border-white/20">
       {stats.map((s) => (
-        <div
-          key={s.label}
-          className="bg-white border border-gray-200 rounded-xl px-4 py-3 min-w-[110px]"
-        >
-          <p className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>
-            {s.label}
-          </p>
-          <p className="text-2xl font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
-            {s.value}
-          </p>
+        <div key={s.label} className="flex items-baseline gap-2">
+          <span className="text-xl font-bold text-white">{s.value}</span>
+          <span className="text-xs text-white/60 uppercase tracking-wide">{s.label}</span>
         </div>
       ))}
     </div>
   );
 }
 
-// ─── Add Application Modal ────────────────────────────────────────────────────
-
-const EMPTY_FORM = {
-  company: '',
-  jobTitle: '',
-  sourcePlatform: '',
-  location: '',
-  jobUrl: '',
-  salaryRange: '',
-  notes: '',
-};
+// ─── Add Modal ────────────────────────────────────────────────────────────────
+const EMPTY_FORM = { company: '', jobTitle: '', sourcePlatform: '', location: '', jobUrl: '', salaryRange: '', notes: '' };
 
 function AddModal({ onClose, onCreated }) {
   const [form, setForm] = useState(EMPTY_FORM);
@@ -297,13 +213,11 @@ function AddModal({ onClose, onCreated }) {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setFieldErrors(errs); return; }
-
     setSubmitting(true);
     setServerError('');
     try {
       const res = await fetch(`${API_BASE}/api/applications`, {
-        method: 'POST',
-        headers: authHeaders(),
+        method: 'POST', headers: authHeaders(),
         body: JSON.stringify({
           company: form.company.trim(),
           jobTitle: form.jobTitle.trim(),
@@ -314,13 +228,8 @@ function AddModal({ onClose, onCreated }) {
           ...(form.notes.trim() && { notes: form.notes.trim() }),
         }),
       });
-
       const data = await res.json();
-      if (!res.ok) {
-        setServerError(data.error || 'Failed to create application.');
-        return;
-      }
-
+      if (!res.ok) { setServerError(data.error || 'Failed to create application.'); return; }
       onCreated(data.data ?? data);
       onClose();
     } catch {
@@ -331,93 +240,57 @@ function AddModal({ onClose, onCreated }) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-[1px]"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-[1px]" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div className="w-full max-w-2xl bg-white border border-gray-200 rounded-2xl shadow-xl">
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 id="modal-title" className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-            Add application
-          </h2>
+          <h2 id="modal-title" className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Add application</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
-
-        {/* Form */}
         <form onSubmit={handleSubmit} noValidate>
           <div className="px-5 py-4 grid grid-cols-2 gap-4">
-
             <div className="col-span-2">
               <label htmlFor="add-company" className="label">Company *</label>
-              <input id="add-company" ref={firstRef}
-                className={`input ${fieldErrors.company ? 'border-red-300' : ''}`}
-                placeholder="Google" value={form.company} onChange={set('company')} disabled={submitting} />
+              <input id="add-company" ref={firstRef} className={`input ${fieldErrors.company ? 'border-red-300' : ''}`} placeholder="Google" value={form.company} onChange={set('company')} disabled={submitting} />
               {fieldErrors.company && <p className="text-[10px] text-red-500 mt-1">{fieldErrors.company}</p>}
             </div>
-
             <div className="col-span-2">
               <label htmlFor="add-jobtitle" className="label">Job title *</label>
-              <input id="add-jobtitle"
-                className={`input ${fieldErrors.jobTitle ? 'border-red-300' : ''}`}
-                placeholder="Software Engineer" value={form.jobTitle} onChange={set('jobTitle')} disabled={submitting} />
+              <input id="add-jobtitle" className={`input ${fieldErrors.jobTitle ? 'border-red-300' : ''}`} placeholder="Software Engineer" value={form.jobTitle} onChange={set('jobTitle')} disabled={submitting} />
               {fieldErrors.jobTitle && <p className="text-[10px] text-red-500 mt-1">{fieldErrors.jobTitle}</p>}
             </div>
-
             <div>
               <label htmlFor="add-platform" className="label">Platform *</label>
-              <select id="add-platform"
-                className={`input ${fieldErrors.sourcePlatform ? 'border-red-300' : ''}`}
-                value={form.sourcePlatform} onChange={set('sourcePlatform')} disabled={submitting}>
+              <select id="add-platform" className={`input ${fieldErrors.sourcePlatform ? 'border-red-300' : ''}`} value={form.sourcePlatform} onChange={set('sourcePlatform')} disabled={submitting}>
                 <option value="">Select…</option>
                 {SOURCE_PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
               {fieldErrors.sourcePlatform && <p className="text-[10px] text-red-500 mt-1">{fieldErrors.sourcePlatform}</p>}
             </div>
-
             <div>
               <label htmlFor="add-location" className="label">Location</label>
-              <input id="add-location" className="input" placeholder="On-site / Remote"
-                value={form.location} onChange={set('location')} disabled={submitting} />
+              <input id="add-location" className="input" placeholder="On-site / Remote" value={form.location} onChange={set('location')} disabled={submitting} />
             </div>
-
             <div className="col-span-2">
               <label htmlFor="add-url" className="label">Job URL</label>
-              <input id="add-url" type="url" className="input" placeholder="https://..."
-                value={form.jobUrl} onChange={set('jobUrl')} disabled={submitting} />
+              <input id="add-url" type="url" className="input" placeholder="https://..." value={form.jobUrl} onChange={set('jobUrl')} disabled={submitting} />
             </div>
-
             <div>
               <label htmlFor="add-salary" className="label">Salary range</label>
-              <input id="add-salary" className="input" placeholder="12–18 LPA"
-                value={form.salaryRange} onChange={set('salaryRange')} disabled={submitting} />
+              <input id="add-salary" className="input" placeholder="12–18 LPA" value={form.salaryRange} onChange={set('salaryRange')} disabled={submitting} />
             </div>
-
             <div className="col-span-2">
               <label htmlFor="add-notes" className="label">Notes</label>
-              <textarea id="add-notes" rows={2} className="input resize-none" placeholder="Any notes…"
-                value={form.notes} onChange={set('notes')} disabled={submitting} />
+              <textarea id="add-notes" rows={2} className="input resize-none" placeholder="Any notes…" value={form.notes} onChange={set('notes')} disabled={submitting} />
             </div>
           </div>
-
           {serverError && (
-            <div className="mx-5 mb-3 px-3 py-2 rounded-md bg-red-50 border border-red-100 text-red-700 text-xs">
-              {serverError}
-            </div>
+            <div className="mx-5 mb-3 px-3 py-2 rounded-md bg-red-50 border border-red-100 text-red-700 text-xs">{serverError}</div>
           )}
-
           <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
             <button type="button" className="btn-secondary" onClick={onClose} disabled={submitting}>Cancel</button>
-            <button id="add-app-submit" type="submit" className="btn-primary" disabled={submitting}>
-              {submitting ? 'Saving…' : 'Save'}
-            </button>
+            <button id="add-app-submit" type="submit" className="btn-primary" disabled={submitting}>{submitting ? 'Saving…' : 'Save'}</button>
           </div>
         </form>
       </div>
@@ -426,7 +299,6 @@ function AddModal({ onClose, onCreated }) {
 }
 
 // ─── Main KanbanBoard ─────────────────────────────────────────────────────────
-
 export default function KanbanBoard({ onLogout }) {
   const [columns, setColumns] = useState(() => groupByStage([]));
   const [allApps, setAllApps] = useState([]);
@@ -436,21 +308,13 @@ export default function KanbanBoard({ onLogout }) {
   const [search, setSearch] = useState('');
   const { toasts, push: pushToast } = useToast();
 
-  // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchApps = useCallback(async () => {
     setLoading(true);
     setFetchError('');
     try {
       const res = await fetch(`${API_BASE}/api/applications`, { headers: authHeaders() });
-
-      if (res.status === 401) {
-        localStorage.removeItem('token');
-        onLogout();
-        return;
-      }
-
+      if (res.status === 401) { localStorage.removeItem('token'); onLogout(); return; }
       if (!res.ok) throw new Error(`Server returned ${res.status}`);
-
       const data = await res.json();
       const apps = Array.isArray(data) ? data : (data.data ?? []);
       setAllApps(apps);
@@ -464,15 +328,11 @@ export default function KanbanBoard({ onLogout }) {
 
   useEffect(() => { fetchApps(); }, [fetchApps]);
 
-  // ── Drag end ───────────────────────────────────────────────────────────────
   const handleDragEnd = useCallback(async ({ source, destination, draggableId }) => {
     if (!destination) return;
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
-
     const from = source.droppableId;
     const to = destination.droppableId;
-
-    // Optimistic update
     setColumns((prev) => {
       const next = { ...prev };
       const fromList = Array.from(prev[from]);
@@ -484,28 +344,18 @@ export default function KanbanBoard({ onLogout }) {
       return next;
     });
     setAllApps((prev) => prev.map((a) => (a.id === draggableId ? { ...a, stage: to } : a)));
-
-    // API call
     try {
       const res = await fetch(`${API_BASE}/api/applications/${draggableId}/stage`, {
-        method: 'PATCH',
-        headers: authHeaders(),
-        body: JSON.stringify({ stage: to }),
+        method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ stage: to }),
       });
-
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.error || `Status ${res.status}`);
-      }
-
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `Status ${res.status}`); }
       pushToast(`Moved to ${STAGES.find((s) => s.id === to)?.label ?? to}`);
     } catch (err) {
       pushToast(`Update failed: ${err.message}`, 'error');
-      fetchApps(); // rollback
+      fetchApps();
     }
   }, [fetchApps, pushToast]);
 
-  // ── Add card ───────────────────────────────────────────────────────────────
   const handleCreated = useCallback((newApp) => {
     setAllApps((prev) => [newApp, ...prev]);
     setColumns((prev) => {
@@ -515,40 +365,119 @@ export default function KanbanBoard({ onLogout }) {
     pushToast('Application added');
   }, [pushToast]);
 
-  // ── Logout ─────────────────────────────────────────────────────────────────
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    onLogout();
-  };
-
-  // ── Filter ─────────────────────────────────────────────────────────────────
   const filtered = search.trim()
     ? (() => {
       const q = search.toLowerCase();
       const result = {};
       STAGE_IDS.forEach((id) => {
         result[id] = (columns[id] || []).filter(
-          (a) =>
-            a.company?.toLowerCase().includes(q) ||
-            a.jobTitle?.toLowerCase().includes(q) ||
-            a.sourcePlatform?.toLowerCase().includes(q) ||
-            a.location?.toLowerCase().includes(q)
+          (a) => a.company?.toLowerCase().includes(q) || a.jobTitle?.toLowerCase().includes(q) ||
+            a.sourcePlatform?.toLowerCase().includes(q) || a.location?.toLowerCase().includes(q)
         );
       });
       return result;
     })()
     : columns;
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--bg)' }}>
 
-      {/* Top nav */}
-      <AppHeader onLogout={handleLogout}>
-        {!loading && !fetchError && (
-          <StatsBar apps={allApps} />
-        )}
-      </AppHeader>
+      {/* ── Green header — two rows ───────────────────────────────────────── */}
+      <header style={{ backgroundColor: '#1F4D3A' }} className="flex-shrink-0 px-8 pt-4 pb-3">
+
+        {/* Row 1: wordmark · nav · actions */}
+        <div className="flex items-center justify-between">
+
+          {/* Wordmark */}
+          <div className="flex-shrink-0">
+            <p
+              className="text-sm tracking-[0.22em] uppercase font-bold"
+              style={{ color: 'var(--accent)' }}
+            >
+              AI Career Pipeline
+            </p>
+            <h1 className="text-lg font-bold text-white mt-0.5">
+              Application Dashboard
+            </h1>
+          </div>
+
+          {/* Nav */}
+          <nav className="flex items-center gap-1">
+            {[
+              { label: 'Dashboard', to: '/' },
+              { label: 'Analytics', to: '/analytics' },
+              { label: 'AI Center', to: '/ai-center' },
+              { label: 'Resumes', to: '/resumes' },
+            ].map((link) => (
+              <a
+                key={link.to}
+                href={link.to}
+                className="px-4 py-1.5 rounded-md text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                style={window.location.pathname === link.to ? { backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff' } : {}}
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Search */}
+            <div className="relative">
+              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                className="pl-8 pr-3 py-1.5 w-44 text-xs rounded-md outline-none"
+                style={{ backgroundColor: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}
+                placeholder="Search…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 hover:text-white text-xs">×</button>
+              )}
+            </div>
+
+            {/* Add button — white on green */}
+            <button
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-semibold transition-colors"
+              style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}
+              onClick={() => setShowModal(true)}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add
+            </button>
+
+            {/* Refresh */}
+            <button
+              className="p-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+              onClick={fetchApps}
+              disabled={loading}
+              title="Refresh"
+            >
+              <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+
+            <div className="w-px h-4 bg-white/20" />
+
+            <button
+              className="text-xs font-medium text-white/50 hover:text-white transition-colors"
+              onClick={() => { localStorage.removeItem('token'); onLogout(); }}
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+
+        {/* Row 2: stats — inline text style on green bg */}
+        {!loading && !fetchError && <StatsBar apps={allApps} />}
+      </header>
 
       {/* Error banner */}
       {fetchError && (
@@ -560,15 +489,6 @@ export default function KanbanBoard({ onLogout }) {
 
       {/* Board */}
       <main className="flex-1 overflow-x-auto overflow-y-hidden px-8 py-6">
-        <div className="mb-6">
-          <h2 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            Track every opportunity
-          </h2>
-          <p className="mt-2 max-w-2xl" style={{ color: 'var(--text-secondary)' }}>
-            Monitor applications across every hiring stage, from saved jobs to final offers.
-          </p>
-        </div>
-
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex gap-3 h-full pb-2" style={{ minWidth: 'max-content' }}>
             {STAGES.map((stage) => (
@@ -579,7 +499,6 @@ export default function KanbanBoard({ onLogout }) {
       </main>
 
       {showModal && <AddModal onClose={() => setShowModal(false)} onCreated={handleCreated} />}
-
       <Toast toasts={toasts} />
     </div>
   );

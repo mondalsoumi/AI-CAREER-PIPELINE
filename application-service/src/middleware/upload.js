@@ -1,24 +1,12 @@
+// upload.js
+// Both endpoints now use memory storage because:
+// - uploadResume sends buffer to MinIO (no local disk needed)
+// - extractResumeText sends buffer to pdfreader (no local disk needed)
+// The Docker volume (./uploads) is no longer used for resume PDFs.
+
 const multer = require('multer')
-const path = require('path')
-const fs = require('fs')
-const config = require('../config')
 
-// Ensure uploads directory exists
-if (!fs.existsSync(config.uploadsDir)) {
-    fs.mkdirSync(config.uploadsDir, { recursive: true })
-}
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, config.uploadsDir),
-    filename: (req, file, cb) => {
-        const userId = req.headers['x-user-id'] || 'unknown'
-        const ext = path.extname(file.originalname)
-        const timestamp = Date.now()
-        cb(null, `resume_${userId}_${timestamp}${ext}`)
-    },
-})
-
-const fileFilter = (req, file, cb) => {
+const pdfOnly = (req, file, cb) => {
     if (file.mimetype === 'application/pdf') {
         cb(null, true)
     } else {
@@ -26,10 +14,11 @@ const fileFilter = (req, file, cb) => {
     }
 }
 
-const upload = multer({
-    storage,
-    fileFilter,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+const memoryUpload = multer({
+    storage: multer.memoryStorage(),
+    fileFilter: pdfOnly,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
 })
 
-module.exports = upload
+// Export both names for backward compatibility with resumeRoutes.js
+module.exports = { diskUpload: memoryUpload, memoryUpload }

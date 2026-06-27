@@ -1,8 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const { authenticateGateway } = require('./middleware/gatewayAuthMiddleware');
-require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 8000;

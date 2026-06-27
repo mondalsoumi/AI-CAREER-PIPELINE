@@ -1,6 +1,7 @@
 require('./config') // validates env vars on boot
 
 const express = require('express')
+const { ensureBucket } = require('./utils/minio')
 const cors = require('cors')
 const path = require('path')
 const config = require('./config')
@@ -31,9 +32,20 @@ app.use((err, req, res, next) => {
     console.error('[Unhandled Error]', err)
     res.status(500).json({ error: err.message || 'Internal server error' })
 })
+async function start() {
+    try {
+        await ensureBucket()
+    } catch (err) {
+        // MinIO not available — log warning but don't crash
+        // Service still works for non-resume endpoints
+        console.warn('[Startup] MinIO not available:', err.message)
+        console.warn('[Startup] Resume upload to MinIO will fail until MinIO is running')
+    }
 
-app.listen(config.port, () => {
-    console.log(`Application Service running on port ${config.port}`)
-})
+    app.listen(config.port, () => {
+        console.log(`Application Service running on port ${config.port}`)
+    })
+}
 
+start()
 module.exports = app
