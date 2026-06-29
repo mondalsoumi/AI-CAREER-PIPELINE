@@ -1,7 +1,9 @@
-// popup.js — runs inside the extension popup window
-// NOTE: Chrome extensions use chrome.storage.local, NOT localStorage.
-// The popup is destroyed and recreated every time the user opens/closes it,
-// so all state is read from chrome.storage on every open.
+// popup.js
+// Architecture change from v1:
+// Instead of content scripts pushing data to storage (which has timing issues
+// with SPAs), the popup now PULLS data from the active tab the moment it opens
+// using chrome.scripting.executeScript with the extractors.js functions.
+// This runs AFTER the user opens the popup, so the SPA has already rendered.
 
 const API_BASE = 'http://localhost:8000'
 
@@ -10,102 +12,106 @@ const SOURCE_PLATFORMS = [
     'Glassdoor', 'Instahyre', 'Company Website', 'Referral', 'Manual', 'Other',
 ]
 
+const SUPPORTED_SITES = [
+    'linkedin.com',
+    'wellfound.com',
+    'indeed.com',
+    'instahyre.com',
+]
+
 // ─── Storage helpers ──────────────────────────────────────────────────────────
+const getStorage = (keys) => new Promise((res) => chrome.storage.local.get(keys, res))
+const setStorage = (data) => new Promise((res) => chrome.storage.local.set(data, res))
+const removeStorage = (keys) => new Promise((res) => chrome.storage.local.remove(keys, res))
 
-function getStorage(keys) {
-    return new Promise((resolve) => chrome.storage.local.get(keys, resolve))
-}
-
-function setStorage(data) {
-    return new Promise((resolve) => chrome.storage.local.set(data, resolve))
-}
-
-function removeStorage(keys) {
-    return new Promise((resolve) => chrome.storage.local.remove(keys, resolve))
-}
-
-function getSession(keys) {
-    return new Promise((resolve) => chrome.storage.session.get(keys, resolve))
-}
-
-// ─── Render helpers ───────────────────────────────────────────────────────────
-
+// ─── DOM helpers ──────────────────────────────────────────────────────────────
 function el(tag, attrs = {}, ...children) {
     const node = document.createElement(tag)
     Object.entries(attrs).forEach(([k, v]) => {
         if (k === 'className') node.className = v
-        else if (k === 'style') Object.assign(node.style, v)
         else if (k.startsWith('on') && typeof v === 'function')
             node.addEventListener(k.slice(2).toLowerCase(), v)
         else node.setAttribute(k, v)
     })
-    children.forEach((child) => {
+    children.flat().forEach((child) => {
         if (child == null) return
         node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child)
     })
     return node
 }
 
+// ─── Extract job data from active tab ────────────────────────────────────────
+// This is the key architectural change — we inject the extractor at popup-open time
+// so it runs after the SPA has fully rendered the job content
+async function extractFromActiveTab() {
+    try {
+        // Get the active tab
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+        if (!tab?.id) return null
+
+        const url = tab.url || ''
+
+        // Check if we're on a supported job site
+        const isSupportedSite = SUPPORTED_SITES.some((site) => url.includes(site))
+        if (!isSupportedSite) return null
+
+        // Inject and execute the extractor script
+        // The extractor reads from the live DOM at this exact moment
+        const results = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['src/extractors.js'],
+        })
+
+        const result = results?.[0]?.result
+        if (!result) return null
+
+        // Only return if we got at least a job title or company
+        if (!result.jobTitle && !result.company) return null
+
+        return result
+    } catch (err) {
+        console.error('[Popup] Extraction failed:', err.message)
+        return null
+    }
+}
+
 // ─── Header ───────────────────────────────────────────────────────────────────
-
-function renderHeader(showSignOut = false, onSignOut) {
-    const right = showSignOut
-        ? el('button', { className: 'btn-signout', onClick: onSignOut }, 'Sign out')
-        : el('span', {})
-
-    return el(
-        'div', { className: 'header' },
+function renderHeader(showSignOut, onSignOut) {
+    return el('div', { className: 'header' },
         el('div', {},
             el('div', { className: 'header-brand' }, 'AI Career Pipeline'),
             el('div', { className: 'header-title' }, 'Job Tracker'),
         ),
-        right,
+        showSignOut
+            ? el('button', { className: 'btn-signout', onClick: onSignOut }, 'Sign out')
+            : el('span', {}),
     )
 }
 
 // ─── Alert ────────────────────────────────────────────────────────────────────
-
 function renderAlert(message, type = 'error') {
     return el('div', { className: `alert alert-${type}` }, message)
 }
 
 // ─── Login view ───────────────────────────────────────────────────────────────
-
 function renderLoginView(root) {
     const emailInput = el('input', { className: 'input', type: 'email', placeholder: 'you@example.com', id: 'login-email' })
     const passwordInput = el('input', { className: 'input', type: 'password', placeholder: '••••••••', id: 'login-password' })
     const submitBtn = el('button', { className: 'btn-primary', id: 'login-submit' }, 'Sign in')
     const alertBox = el('div', {})
 
-    const form = el(
-        'div', { className: 'body' },
-        el('div', { className: 'login-title' }, 'Sign in'),
-        el('div', { className: 'login-sub' }, 'Access your career pipeline'),
-        alertBox,
-        el('div', { className: 'field' },
-            el('label', { className: 'label', for: 'login-email' }, 'Email'),
-            emailInput,
-        ),
-        el('div', { className: 'field' },
-            el('label', { className: 'label', for: 'login-password' }, 'Password'),
-            passwordInput,
-        ),
-        submitBtn,
-    )
-
-    submitBtn.addEventListener('click', async () => {
+    const handleSubmit = async () => {
         const email = emailInput.value.trim()
         const password = passwordInput.value.trim()
 
+        alertBox.innerHTML = ''
         if (!email || !password) {
-            alertBox.innerHTML = ''
             alertBox.appendChild(renderAlert('Email and password are required.'))
             return
         }
 
         submitBtn.disabled = true
-        submitBtn.textContent = 'Signing in…'
-        alertBox.innerHTML = ''
+        submitBtn.innerHTML = '<span class="spinner"></span>'
 
         try {
             const res = await fetch(`${API_BASE}/api/auth/login`, {
@@ -113,7 +119,6 @@ function renderLoginView(root) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
             })
-
             const data = await res.json()
 
             if (!res.ok) {
@@ -127,36 +132,62 @@ function renderLoginView(root) {
                 return
             }
 
-            // Save token to chrome.storage.local — NOT localStorage
             await setStorage({ token })
-
-            // Re-render as the job save view
             root.innerHTML = ''
             await renderJobView(root)
         } catch {
-            alertBox.appendChild(renderAlert('Cannot reach the API gateway. Make sure it is running on port 8000.'))
+            alertBox.appendChild(renderAlert('Cannot reach the API. Is the gateway running on port 8000?'))
         } finally {
             submitBtn.disabled = false
             submitBtn.textContent = 'Sign in'
         }
-    })
+    }
+
+    submitBtn.addEventListener('click', handleSubmit)
+    emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSubmit() })
+    passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSubmit() })
 
     root.appendChild(renderHeader(false))
-    root.appendChild(form)
+    root.appendChild(
+        el('div', { className: 'body' },
+            el('div', { className: 'login-title' }, 'Sign in'),
+            el('div', { className: 'login-sub' }, 'Access your career pipeline'),
+            alertBox,
+            el('div', { className: 'field' },
+                el('label', { className: 'label', for: 'login-email' }, 'Email'),
+                emailInput,
+            ),
+            el('div', { className: 'field' },
+                el('label', { className: 'label', for: 'login-password' }, 'Password'),
+                passwordInput,
+            ),
+            submitBtn,
+        )
+    )
 }
 
 // ─── Job save view ────────────────────────────────────────────────────────────
-
 async function renderJobView(root) {
-    // Read token and last detected job data in parallel
-    const [{ token }, { lastJobData }] = await Promise.all([
-        getStorage(['token']),
-        getSession(['lastJobData']),
-    ])
+    const { token } = await getStorage(['token'])
 
-    const job = lastJobData || {}
+    // Show loading state while extracting
+    root.appendChild(renderHeader(true, async () => {
+        await removeStorage(['token'])
+        root.innerHTML = ''
+        renderLoginView(root)
+    }))
 
-    // Build source platform dropdown
+    const extractingBadge = el('div', { className: 'extracting-badge' }, 'Detecting job data…')
+    const bodyEl = el('div', { className: 'body' }, extractingBadge)
+    root.appendChild(bodyEl)
+
+    // Extract from active tab NOW — popup is open so SPA has rendered
+    const job = await extractFromActiveTab() || {}
+
+    // Remove extracting badge
+    bodyEl.removeChild(extractingBadge)
+
+    // Build platform dropdown
     const platformSelect = el('select', { className: 'select', id: 'field-platform' },
         el('option', { value: '' }, 'Select…'),
         ...SOURCE_PLATFORMS.map((p) =>
@@ -172,63 +203,41 @@ async function renderJobView(root) {
     const submitBtn = el('button', { className: 'btn-primary', id: 'save-btn' }, 'Save to Pipeline')
     const alertBox = el('div', {})
 
-    // Badge showing job was auto-detected
-    const detectedBadge = job.jobTitle
-        ? el('div', { className: 'detected-badge' },
+    // Show detected badge or no-job hint
+    if (job.jobTitle || job.company) {
+        const badge = el('div', { className: 'detected-badge' },
             el('span', { className: 'detected-dot' }),
-            `Job detected from ${job.sourcePlatform || 'this page'}`,
+            `Detected from ${job.sourcePlatform || 'this page'}`,
         )
-        : null
-
-    // If no job data found, show a hint
-    const noJobHint = !job.jobTitle && !job.company
-        ? el('div', { className: 'no-job' },
+        bodyEl.appendChild(badge)
+    } else {
+        const hint = el('div', { className: 'no-job' },
             el('div', { className: 'no-job-title' }, 'No job detected'),
-            'Open a job posting on LinkedIn, Indeed, Wellfound, or Instahyre, then reopen this popup. Or fill in the details manually below.',
+            'Open a job posting on LinkedIn, Wellfound, Indeed, or Instahyre. Or fill in the details below manually.',
         )
-        : null
-
-    const form = el(
-        'div', { className: 'body' },
-        detectedBadge,
-        noJobHint,
-        alertBox,
-        el('div', { className: 'field' },
-            el('label', { className: 'label', for: 'field-company' }, 'Company *'),
-            companyInput,
-        ),
-        el('div', { className: 'field' },
-            el('label', { className: 'label', for: 'field-title' }, 'Job title *'),
-            titleInput,
-        ),
-        el('div', { className: 'field' },
-            el('label', { className: 'label', for: 'field-platform' }, 'Platform *'),
-            platformSelect,
-        ),
-        el('div', { className: 'field' },
-            el('label', { className: 'label', for: 'field-location' }, 'Location'),
-            locationInput,
-        ),
-        el('div', { className: 'field' },
-            el('label', { className: 'label', for: 'field-url' }, 'Job URL'),
-            urlInput,
-        ),
-        el('div', { className: 'field' },
-            el('label', { className: 'label', for: 'field-notes' }, 'Notes'),
-            notesArea,
-        ),
-        submitBtn,
-    )
-
-    // Sign out handler
-    const handleSignOut = async () => {
-        await removeStorage(['token'])
-        root.innerHTML = ''
-        renderLoginView(root)
+        bodyEl.appendChild(hint)
     }
 
-    root.appendChild(renderHeader(true, handleSignOut))
-    root.appendChild(form)
+    bodyEl.appendChild(alertBox)
+    bodyEl.appendChild(
+        el('div', { className: 'field' }, el('label', { className: 'label', for: 'field-company' }, 'Company *'), companyInput),
+    )
+    bodyEl.appendChild(
+        el('div', { className: 'field' }, el('label', { className: 'label', for: 'field-title' }, 'Job title *'), titleInput),
+    )
+    bodyEl.appendChild(
+        el('div', { className: 'field' }, el('label', { className: 'label', for: 'field-platform' }, 'Platform *'), platformSelect),
+    )
+    bodyEl.appendChild(
+        el('div', { className: 'field' }, el('label', { className: 'label', for: 'field-location' }, 'Location'), locationInput),
+    )
+    bodyEl.appendChild(
+        el('div', { className: 'field' }, el('label', { className: 'label', for: 'field-url' }, 'Job URL'), urlInput),
+    )
+    bodyEl.appendChild(
+        el('div', { className: 'field' }, el('label', { className: 'label', for: 'field-notes' }, 'Notes'), notesArea),
+    )
+    bodyEl.appendChild(submitBtn)
 
     // Save handler
     submitBtn.addEventListener('click', async () => {
@@ -244,7 +253,7 @@ async function renderJobView(root) {
         }
 
         submitBtn.disabled = true
-        submitBtn.textContent = 'Saving…'
+        submitBtn.innerHTML = '<span class="spinner"></span> Saving…'
 
         try {
             const res = await fetch(`${API_BASE}/api/applications`, {
@@ -266,13 +275,9 @@ async function renderJobView(root) {
             const data = await res.json()
 
             if (res.status === 401) {
-                // Token expired — force re-login
                 await removeStorage(['token'])
                 alertBox.appendChild(renderAlert('Session expired. Please sign in again.'))
-                setTimeout(() => {
-                    root.innerHTML = ''
-                    renderLoginView(root)
-                }, 1500)
+                setTimeout(() => { root.innerHTML = ''; renderLoginView(root) }, 1500)
                 return
             }
 
@@ -281,7 +286,6 @@ async function renderJobView(root) {
                 return
             }
 
-            // Success — clear the form and show confirmation
             alertBox.appendChild(renderAlert(`Saved: ${company} — ${jobTitle}`, 'success'))
             companyInput.value = ''
             titleInput.value = ''
@@ -289,9 +293,6 @@ async function renderJobView(root) {
             urlInput.value = ''
             notesArea.value = ''
             platformSelect.value = ''
-
-            // Clear the stored job data so stale data doesn't persist
-            await chrome.storage.session.remove(['lastJobData'])
         } catch {
             alertBox.appendChild(renderAlert('Network error. Is the API gateway running on port 8000?'))
         } finally {
@@ -302,7 +303,6 @@ async function renderJobView(root) {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
-
 async function boot() {
     const root = document.getElementById('root')
     const { token } = await getStorage(['token'])

@@ -49,7 +49,7 @@ export default function AnalyticsPage({ onLogout }) {
     if (loading) {
         return (
             <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
-                <AppHeader onLogout={onLogout} title="Analytics" />
+                <AppHeader title="Analytics" onLogout={onLogout} />
                 <div className="flex items-center justify-center h-64">
                     <div className="animate-spin h-8 w-8 border-4 border-gray-200 border-t-transparent rounded-full" />
                 </div>
@@ -60,7 +60,7 @@ export default function AnalyticsPage({ onLogout }) {
     if (error) {
         return (
             <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
-                <AppHeader onLogout={onLogout} title="Analytics" />
+                <AppHeader title="Analytics" onLogout={onLogout} />
                 <div className="p-8">
                     <div className="bg-red-50 border border-red-200 rounded-lg px-5 py-4 text-red-700 text-sm">{error}</div>
                 </div>
@@ -80,7 +80,7 @@ export default function AnalyticsPage({ onLogout }) {
 
     return (
         <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
-            <AppHeader onLogout={onLogout} title="Analytics" />
+            <AppHeader title="Analytics" onLogout={onLogout} />
 
             <div className="p-8">
 

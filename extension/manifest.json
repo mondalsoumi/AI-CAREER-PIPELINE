@@ -1,15 +1,24 @@
 {
     "manifest_version": 3,
     "name": "AI Career Pipeline",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "Save job applications to your AI Career Pipeline with one click.",
     "permissions": [
         "storage",
         "activeTab",
-        "scripting"
+        "scripting",
+        "tabs"
     ],
     "host_permissions": [
-        "http://localhost:8000/*"
+        "http://localhost:8000/*",
+        "https://www.linkedin.com/*",
+        "https://linkedin.com/*",
+        "https://wellfound.com/*",
+        "https://www.wellfound.com/*",
+        "https://in.indeed.com/*",
+        "https://www.indeed.com/*",
+        "https://instahyre.com/*",
+        "https://www.instahyre.com/*"
     ],
     "action": {
         "default_popup": "popup.html",
@@ -18,48 +27,6 @@
     "background": {
         "service_worker": "src/background.js"
     },
-    "content_scripts": [
-        {
-            "matches": [
-                "https://www.linkedin.com/jobs/view/*",
-                "https://linkedin.com/jobs/view/*"
-            ],
-            "js": [
-                "src/content-scripts/linkedin.js"
-            ],
-            "run_at": "document_idle"
-        },
-        {
-            "matches": [
-                "https://in.indeed.com/viewjob*",
-                "https://www.indeed.com/viewjob*"
-            ],
-            "js": [
-                "src/content-scripts/indeed.js"
-            ],
-            "run_at": "document_idle"
-        },
-        {
-            "matches": [
-                "https://wellfound.com/jobs/*",
-                "https://wellfound.com/company/*/jobs/*"
-            ],
-            "js": [
-                "src/content-scripts/wellfound.js"
-            ],
-            "run_at": "document_idle"
-        },
-        {
-            "matches": [
-                "https://instahyre.com/job-*",
-                "https://www.instahyre.com/job-*"
-            ],
-            "js": [
-                "src/content-scripts/instahyre.js"
-            ],
-            "run_at": "document_idle"
-        }
-    ],
     "icons": {
         "16": "icons/icon16.png",
         "48": "icons/icon48.png",

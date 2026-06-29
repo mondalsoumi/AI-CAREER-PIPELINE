@@ -1,3 +1,4 @@
+import AppHeader from '../components/AppHeader'
 import { useEffect, useState, useCallback } from 'react'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
@@ -166,66 +167,15 @@ export default function ResumeManager({ onLogout }) {
         }
     }
 
-    const handleLogout = () => {
-        localStorage.removeItem('token')
-        onLogout()
-    }
 
-    // ── Nav links ───────────────────────────────────────────────────────────────
-    const navLinks = [
-        { label: 'Dashboard', path: '/' },
-        { label: 'Analytics', path: '/analytics' },
-        { label: 'AI Center', path: '/ai-center' },
-        { label: 'Resumes', path: '/resumes' },
-    ]
+
+
 
     return (
         <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
 
             {/* Top nav */}
-            <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
-                <div>
-                    <p
-                        className="text-sm tracking-[0.22em] uppercase font-bold"
-                        style={{ color: 'var(--accent)' }}
-                    >
-                        AI Career Pipeline
-                    </p>
-                    <h1 className="text-lg font-bold mt-0.5" style={{ color: 'var(--text-primary)' }}>
-                        Resume Manager
-                    </h1>
-                </div>
-
-                <div className="flex items-center gap-6">
-                    <nav className="flex items-center gap-5">
-                        {navLinks.map((link) => (
-                            <a
-                                key={link.path}
-                                href={link.path}
-                                className="text-sm font-medium transition-colors"
-                                style={{
-                                    color: window.location.pathname === link.path
-                                        ? 'var(--primary)'
-                                        : 'var(--text-secondary)',
-                                    borderBottom: window.location.pathname === link.path
-                                        ? '2px solid var(--primary)'
-                                        : '2px solid transparent',
-                                    paddingBottom: '2px',
-                                }}
-                            >
-                                {link.label}
-                            </a>
-                        ))}
-                    </nav>
-                    <div className="h-4 w-px bg-gray-200" />
-                    <button
-                        onClick={handleLogout}
-                        className="text-xs font-medium text-gray-400 hover:text-gray-700 transition-colors"
-                    >
-                        Sign out
-                    </button>
-                </div>
-            </header>
+            <AppHeader title="Resume Manager" onLogout={onLogout} />
 
             <main className="max-w-4xl mx-auto px-8 py-8">
 

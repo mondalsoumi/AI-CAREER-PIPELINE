@@ -1,3 +1,4 @@
+import AppHeader from '../components/AppHeader'
 import { useState } from 'react'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
@@ -16,13 +17,6 @@ function token() {
 
 const TABS = ['Resume Match', 'Interview Notes', 'Follow-up Email', 'Career Insights']
 
-// ─── Nav links — matches all other pages ─────────────────────────────────────
-const NAV_LINKS = [
-    { label: 'Dashboard', path: '/' },
-    { label: 'Analytics', path: '/analytics' },
-    { label: 'AI Center', path: '/ai-center' },
-    { label: 'Resumes', path: '/resumes' },
-]
 
 export default function AICenter({ onLogout }) {
     const [activeTab, setActiveTab] = useState('Resume Match')
@@ -211,10 +205,7 @@ export default function AICenter({ onLogout }) {
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────────
-    const handleLogout = () => {
-        localStorage.removeItem('token')
-        onLogout()
-    }
+
 
     const sentimentColor = (s) => {
         if (s === 'Positive') return 'text-green-700 bg-green-50 border-green-200'
@@ -233,44 +224,7 @@ export default function AICenter({ onLogout }) {
         <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
 
             {/* Top nav */}
-            <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
-                <div>
-                    <p
-                        className="text-sm tracking-[0.22em] uppercase font-bold"
-                        style={{ color: 'var(--accent)' }}
-                    >
-                        AI Career Pipeline
-                    </p>
-                    <h1 className="text-lg font-bold mt-0.5" style={{ color: 'var(--text-primary)' }}>
-                        AI Career Center
-                    </h1>
-                </div>
-                <div className="flex items-center gap-6">
-                    <nav className="flex items-center gap-5">
-                        {NAV_LINKS.map((link) => (
-                            <a
-                                key={link.path}
-                                href={link.path}
-                                className="text-sm font-medium transition-colors"
-                                style={{
-                                    color: window.location.pathname === link.path
-                                        ? 'var(--primary)'
-                                        : 'var(--text-secondary)',
-                                }}
-                            >
-                                {link.label}
-                            </a>
-                        ))}
-                    </nav>
-                    <div className="h-4 w-px bg-gray-200" />
-                    <button
-                        onClick={handleLogout}
-                        className="text-xs font-medium text-gray-400 hover:text-gray-700 transition-colors"
-                    >
-                        Sign out
-                    </button>
-                </div>
-            </header>
+            <AppHeader title="AI Career Center" onLogout={onLogout} />
 
             <main className="max-w-6xl mx-auto px-8 py-8">
 
@@ -301,7 +255,7 @@ export default function AICenter({ onLogout }) {
                                 {/* PDF upload section */}
                                 <div className="border border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
                                     <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--text-secondary)' }}>
-                                        Upload resume PDF to auto-extract text
+                                        Upload your resume
                                     </p>
                                     <div className="flex items-center gap-3">
                                         <label className="cursor-pointer text-sm font-medium px-4 py-2 border border-gray-200 rounded-md bg-white hover:bg-gray-50 transition-colors" style={{ color: 'var(--text-primary)' }}>
@@ -539,7 +493,7 @@ export default function AICenter({ onLogout }) {
                         {activeTab === 'Career Insights' && (
                             <div className="space-y-4">
                                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                                    Analyzes all your applications and gives personalized coaching advice.
+                                    Analyzes all your applications and gives personalized advice.
                                 </p>
 
                                 <button onClick={runCareerInsights} disabled={insightsLoading} className="btn-primary disabled:opacity-60">
