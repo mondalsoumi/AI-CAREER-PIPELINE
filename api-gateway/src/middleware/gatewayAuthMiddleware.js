@@ -1,7 +1,11 @@
 const jwt = require('jsonwebtoken');
 
-const jwtSecret = process.env.JWT_SECRET || '316255abf6a27d33f39f38b3b7b73c5a81addbf06562495cb8cacdd14b72bd6a7beeed489bbb8118e0a197b6154bb5262ea6cddb65da001a904a1a01ff10c193';
-
+// FIX — crash loudly at startup if the secret is missing
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) {
+  console.error('FATAL: JWT_SECRET environment variable is not set.');
+  process.exit(1);
+}
 const authenticateGateway = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

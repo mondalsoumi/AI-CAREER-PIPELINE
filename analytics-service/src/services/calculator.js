@@ -6,6 +6,7 @@ const appPrisma = require('../../utils/appPrisma')
 const analyticsPrisma = require('../../utils/analyticsPrisma')
 const { cache } = require('../../utils/redis')
 const config = require('../config')
+const { Prisma } = require('@prisma/client')
 const INTERVIEW_STAGES = [
     'ONLINE_ASSESSMENT',
     'TECHNICAL_INTERVIEW',
@@ -90,19 +91,7 @@ async function computeAndStore(userId) {
         return acc
     }, {})
 
-    // ── Resume breakdown ───────────────────────────────────────────────────────
-    // For each resume, count total applications and how many reached interview+
-    // e.g. { "Resume v1": { total: 10, interviews: 3, offers: 1 } }
-    const resumeBreakdown = {}
-    applications.forEach((a) => {
-        if (!a.resumeId) return
-        if (!resumeBreakdown[a.resumeId]) {
-            resumeBreakdown[a.resumeId] = { total: 0, interviews: 0, offers: 0 }
-        }
-        resumeBreakdown[a.resumeId].total++
-        if (INTERVIEW_STAGES.includes(a.stage)) resumeBreakdown[a.resumeId].interviews++
-        if (a.stage === 'OFFER') resumeBreakdown[a.resumeId].offers++
-    })
+
 
     // ── Store snapshot ─────────────────────────────────────────────────────────
     const snapshot = await analyticsPrisma.analyticsSnapshot.create({
@@ -114,8 +103,7 @@ async function computeAndStore(userId) {
             rejectionRate,
             sourceBreakdown,
             stageBreakdown,
-            monthlyTrends,
-            resumeBreakdown,
+            monthlyTrends
         },
     })
 

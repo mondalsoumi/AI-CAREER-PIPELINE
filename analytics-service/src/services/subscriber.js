@@ -18,8 +18,14 @@ async function startSubscriber() {
             return
         }
 
-        if (event.type !== 'application.status.changed') return
+        // FIX — also recalculate on create and update
+        const TRIGGER_EVENTS = [
+            'application.created',
+            'application.updated',
+            'application.status.changed',
+        ];
 
+        if (!TRIGGER_EVENTS.includes(event.type)) return;
         if (!event.payload?.userId) {
             console.warn('[Subscriber] Event missing userId:', event)
             return

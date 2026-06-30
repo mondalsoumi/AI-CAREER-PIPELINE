@@ -71,12 +71,7 @@ export default function AnalyticsPage({ onLogout }) {
     const monthlyData = Object.entries(analytics.monthlyTrends || {}).map(([month, count]) => ({ month, count }))
     const sourceData = Object.entries(analytics.sourceBreakdown || {}).map(([name, value]) => ({ name, value }))
     const stageData = Object.entries(analytics.stageBreakdown || {}).map(([stage, count]) => ({ stage, count }))
-    const resumeData = Object.entries(analytics.resumeBreakdown || {}).map(([id, stats]) => ({
-        resumeId: id.slice(-8),
-        total: stats.total,
-        interviews: stats.interviews,
-        offers: stats.offers,
-    }))
+
 
     return (
         <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
@@ -128,27 +123,6 @@ export default function AnalyticsPage({ onLogout }) {
                             </BarChart>
                         </ResponsiveContainer>
                     </ChartCard>
-
-                    <ChartCard title="Resume performance">
-                        {resumeData.length === 0 ? (
-                            <div className="flex items-center justify-center h-64 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                                No resume data yet. Link resumes to applications to see performance.
-                            </div>
-                        ) : (
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={resumeData}>
-                                    <XAxis dataKey="resumeId" tick={{ fontSize: 10 }} />
-                                    <YAxis tick={{ fontSize: 11 }} />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Bar dataKey="total" fill="#1F4D3A" radius={[3, 3, 0, 0]} />
-                                    <Bar dataKey="interviews" fill="#B08968" radius={[3, 3, 0, 0]} />
-                                    <Bar dataKey="offers" fill="#52796F" radius={[3, 3, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        )}
-                    </ChartCard>
-
                 </div>
             </div>
         </div>
@@ -169,6 +143,28 @@ function ChartCard({ title, children }) {
         <div className="bg-white border border-gray-200 rounded-xl p-5">
             <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>{title}</h3>
             {children}
+        </div>
+    )
+}
+
+function ResumeTooltip({ active, payload }) {
+    if (!active || !payload || !payload.length) return null
+    const data = payload[0]?.payload
+    if (!data) return null
+
+    return (
+        <div className="bg-white border border-gray-200 rounded-lg shadow-md px-3 py-2.5 text-xs max-w-[220px]">
+            <p className="font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>{data.versionName}</p>
+            <p style={{ color: 'var(--text-secondary)' }}>Total: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{data.total}</span></p>
+            <p style={{ color: 'var(--text-secondary)' }}>Interviews: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{data.interviews}</span></p>
+            <p style={{ color: 'var(--text-secondary)' }}>Offers: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{data.offers}</span></p>
+            {data.companies.length > 0 && (
+                <>
+                    <div className="border-t border-gray-100 mt-1.5 pt-1.5" />
+                    <p className="font-medium mb-0.5" style={{ color: 'var(--text-secondary)' }}>Used for:</p>
+                    <p style={{ color: 'var(--text-primary)' }}>{data.companies.join(', ')}</p>
+                </>
+            )}
         </div>
     )
 }

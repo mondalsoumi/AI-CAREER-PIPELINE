@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const { authenticateGateway } = require('./middleware/gatewayAuthMiddleware');
+const rateLimit = require('express-rate-limit');
+
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -13,8 +15,10 @@ const APPLICATION_SERVICE_URL = process.env.APPLICATION_SERVICE_URL || 'http://l
 const ANALYTICS_SERVICE_URL = process.env.ANALYTICS_SERVICE_URL || 'http://localhost:8003';
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8004';
 
-app.use(cors());
-
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGIN || 'http://localhost:5173',
+  credentials: true,
+}))
 // ─── Health check (no auth) ───────────────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.json({ status: 'UP', service: 'api-gateway', timestamp: new Date() });
@@ -111,7 +115,19 @@ app.use((err, req, res, next) => {
   console.error('[API Gateway Error]', err.message);
   res.status(500).json({ error: 'Gateway error' });
 });
+// General limit — all routes
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 100,
+  message: { error: 'Too many requests, please try again later.' }
+}));
 
+// Stricter limit — AI routes only
+app.use('/api/ai', rateLimit({
+  windowMs: 60 * 1000,   // 1 minute
+  max: 10,
+  message: { error: 'AI rate limit reached. Wait a moment.' }
+}));
 app.listen(PORT, () => {
   console.log(`API Gateway running on port ${PORT}`);
   console.log(`Auth        → ${AUTH_SERVICE_URL}`);

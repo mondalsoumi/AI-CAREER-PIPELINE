@@ -1,29 +1,94 @@
 const prisma = require('../utils/prisma')
 const { publishEvent } = require('../services/redisPublisher')
-
+const { uploadFile } = require('../utils/minio')
+const { PdfReader } = require('pdfreader')
+// ─── Helper — same extraction logic used in resumeController ──────────────────
+function extractTextFromBuffer(buffer) {
+    return new Promise((resolve, reject) => {
+        const lines = {}
+        new PdfReader().parseBuffer(buffer, (err, item) => {
+            if (err) { reject(err); return }
+            if (!item) {
+                const fullText = Object.keys(lines)
+                    .sort((a, b) => parseFloat(a) - parseFloat(b))
+                    .map((y) => lines[y].join(' '))
+                    .join('\n')
+                resolve(fullText)
+                return
+            }
+            if (item.text) {
+                const y = String(item.y)
+                if (!lines[y]) lines[y] = []
+                lines[y].push(item.text)
+            }
+        })
+    })
+}
 // POST /applications
 const createApplication = async (req, res) => {
     try {
         const userId = req.headers['x-user-id']
         if (!userId) return res.status(401).json({ error: 'Unauthorized' })
 
-        const { company, jobTitle, location, jobUrl, sourcePlatform, salaryRange, notes, resumeId } = req.body
+        // With multipart/form-data, all fields arrive as strings on req.body
+        const {
+            company, jobTitle, location, jobUrl, sourcePlatform,
+            salaryRange, notes, resumeId, newResumeVersionName,
+        } = req.body
 
         if (!company || !jobTitle || !sourcePlatform) {
             return res.status(400).json({ error: 'company, jobTitle, and sourcePlatform are required' })
         }
 
+        let finalResumeId = resumeId || null
+
+        // ── Mode 2: new resume uploaded alongside this application ────────────────
+        if (req.file) {
+            if (!newResumeVersionName || !newResumeVersionName.trim()) {
+                return res.status(400).json({ error: 'newResumeVersionName is required when uploading a resume' })
+            }
+
+            const filename = `resume_${userId}_${Date.now()}.pdf`
+            await uploadFile(req.file.buffer, filename, req.file.mimetype)
+
+            let textSnippet = null
+            try {
+                const fullText = await extractTextFromBuffer(req.file.buffer)
+                textSnippet = fullText.trim().slice(0, 2000) || null
+            } catch (extractErr) {
+                console.warn('[createApplication] Text extraction failed:', extractErr.message)
+            }
+
+            const newResume = await prisma.resume.create({
+                data: {
+                    userId,
+                    versionName: newResumeVersionName.trim(),
+                    fileUrl: filename,
+                    textSnippet,
+                },
+            })
+
+            await publishEvent('resume.uploaded', {
+                userId,
+                resumeId: newResume.id,
+                versionName: newResume.versionName,
+            })
+
+            finalResumeId = newResume.id
+        }
+
+        // ── Create the application, linked to whichever resume was resolved ───────
         const application = await prisma.application.create({
             data: {
                 userId,
                 company,
                 jobTitle,
-                location,
-                jobUrl,
+                location: location || null,
+                jobUrl: jobUrl || null,
                 sourcePlatform,
-                salaryRange,
-                notes,
-                resumeId: resumeId || null,
+                salaryRange: salaryRange || null,
+                notes: notes || null,
+                resumeId: finalResumeId,
             },
             include: { resume: true, interviews: true },
         })
@@ -40,6 +105,7 @@ const createApplication = async (req, res) => {
         return res.status(500).json({ error: 'Internal server error' })
     }
 }
+
 
 // GET /applications
 const getApplications = async (req, res) => {

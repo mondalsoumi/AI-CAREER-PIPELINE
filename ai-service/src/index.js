@@ -7,7 +7,11 @@ const aiRoutes = require('./routes/aiRoutes')
 
 const app = express()
 
-app.use(cors())
+app.use(cors({
+    origin: process.env.ALLOWED_ORIGIN || 'http://localhost:5173',
+    credentials: true,
+}))
+
 app.use(express.json({ limit: '2mb' })) // resume text can be large
 
 // Health check
