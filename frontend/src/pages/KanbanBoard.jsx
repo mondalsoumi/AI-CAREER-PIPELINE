@@ -440,7 +440,9 @@ function DetailField({ label, value }) {
 }
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
-function DetailModal({ app, stageColor, onClose }) {
+function DetailModal({ app, stageColor, onClose, onDelete }) {
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handleKey);
@@ -448,6 +450,19 @@ function DetailModal({ app, stageColor, onClose }) {
   }, [onClose]);
 
   const stage = STAGES.find((s) => s.id === app.stage);
+  const isSavedStage = app.stage === 'SAVED';
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete "${app.jobTitle}" at ${app.company}? This cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      await onDelete(app.id);
+      onClose();
+    } catch (err) {
+      alert(err.message || 'Failed to delete application.');
+      setDeleting(false);
+    }
+  };
 
   return (
     <div
@@ -538,7 +553,18 @@ function DetailModal({ app, stageColor, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end px-5 py-4 border-t border-gray-100">
+        <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100">
+          {isSavedStage ? (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="text-sm font-medium px-4 py-2 border border-red-200 rounded-md text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+            >
+              {deleting ? 'Deleting…' : 'Delete'}
+            </button>
+          ) : (
+            <span />
+          )}
           <button className="btn-secondary" onClick={onClose}>Close</button>
         </div>
 
@@ -635,6 +661,27 @@ export default function KanbanBoard({ onLogout }) {
     pushToast('Application added');
   }, [pushToast]);
 
+  const handleDeleteApplication = useCallback(async (id) => {
+    const res = await fetch(`${API_BASE}/api/applications/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    if (res.status === 401) { localStorage.removeItem('token'); onLogout(); return; }
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || `Status ${res.status}`);
+    }
+    setAllApps((prev) => prev.filter((a) => a.id !== id));
+    setColumns((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((stageId) => {
+        next[stageId] = next[stageId].filter((a) => a.id !== id);
+      });
+      return next;
+    });
+    pushToast('Application deleted');
+  }, [onLogout, pushToast]);
+
   const filtered = search.trim()
     ? (() => {
       const q = search.toLowerCase();
@@ -695,6 +742,7 @@ export default function KanbanBoard({ onLogout }) {
           app={selectedApp}
           stageColor={STAGES.find((s) => s.id === selectedApp.stage)?.color ?? '#1F4D3A'}
           onClose={() => setSelectedApp(null)}
+          onDelete={handleDeleteApplication}
         />
       )}
 

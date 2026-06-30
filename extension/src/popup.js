@@ -40,6 +40,58 @@ function el(tag, attrs = {}, ...children) {
     return node
 }
 
+// ─── Resume helpers ───────────────────────────────────────────────────────────
+async function fetchResumes(token) {
+    try {
+        const res = await fetch(`${API_BASE}/api/resumes`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await res.json()
+        if (!res.ok) return []
+        return data.data ?? []
+    } catch {
+        return []
+    }
+}
+
+async function uploadResume(token, file, versionName) {
+    const formData = new FormData()
+    formData.append('resume', file)
+    formData.append('versionName', versionName)
+
+    const res = await fetch(`${API_BASE}/api/resumes`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Resume upload failed')
+    return data.data
+}
+
+// ─── Applications helpers ─────────────────────────────────────────────────────
+async function fetchRecentApplications(token) {
+    try {
+        const res = await fetch(`${API_BASE}/api/applications?limit=5`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await res.json()
+        if (!res.ok) return []
+        return data.data ?? []
+    } catch {
+        return []
+    }
+}
+
+async function deleteApplication(token, id) {
+    const res = await fetch(`${API_BASE}/api/applications/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Delete failed')
+}
+
 // ─── Extract job data from active tab ────────────────────────────────────────
 // This is the key architectural change — we inject the extractor at popup-open time
 // so it runs after the SPA has fully rendered the job content
@@ -200,6 +252,60 @@ async function renderJobView(root) {
     const locationInput = el('input', { className: 'input', id: 'field-location', placeholder: 'City / Remote', value: job.location || '' })
     const urlInput = el('input', { className: 'input', id: 'field-url', placeholder: 'https://…', value: job.jobUrl || '', type: 'url' })
     const notesArea = el('textarea', { className: 'textarea', id: 'field-notes', placeholder: 'Optional notes…', rows: '2' })
+
+    // Resume select + inline upload
+    const resumeSelect = el('select', { className: 'select', id: 'field-resume' },
+        el('option', { value: '' }, 'No resume attached'),
+    )
+    const resumeToggleBtn = el('button', { className: 'btn-link', type: 'button', id: 'resume-upload-toggle' }, '+ Upload new resume')
+    const resumeVersionInput = el('input', { className: 'input', type: 'text', id: 'resume-version-name', placeholder: 'Version name (e.g. SWE v3)' })
+    const resumeFileInput = el('input', { className: 'input-file', type: 'file', id: 'resume-file-input', accept: '.pdf' })
+    const resumeUploadBtn = el('button', { className: 'btn-secondary', type: 'button', id: 'resume-upload-btn' }, 'Upload')
+    const resumeUploadAlert = el('div', {})
+    const resumeUploadRow = el('div', { className: 'resume-upload-row hidden' },
+        resumeVersionInput,
+        resumeFileInput,
+        resumeUploadBtn,
+        resumeUploadAlert,
+    )
+
+    resumeToggleBtn.addEventListener('click', () => {
+        resumeUploadRow.classList.toggle('hidden')
+    })
+
+    resumeUploadBtn.addEventListener('click', async () => {
+        resumeUploadAlert.innerHTML = ''
+        const file = resumeFileInput.files?.[0]
+        const versionName = resumeVersionInput.value.trim()
+
+        if (!versionName) {
+            resumeUploadAlert.appendChild(renderAlert('Version name is required.'))
+            return
+        }
+        if (!file) {
+            resumeUploadAlert.appendChild(renderAlert('Please choose a PDF file.'))
+            return
+        }
+
+        resumeUploadBtn.disabled = true
+        resumeUploadBtn.innerHTML = '<span class="spinner"></span>'
+
+        try {
+            const newResume = await uploadResume(token, file, versionName)
+            const option = el('option', { value: newResume.id, selected: '' }, newResume.versionName)
+            resumeSelect.appendChild(option)
+            resumeSelect.value = newResume.id
+            resumeVersionInput.value = ''
+            resumeFileInput.value = ''
+            resumeUploadRow.classList.add('hidden')
+        } catch (err) {
+            resumeUploadAlert.appendChild(renderAlert(err.message))
+        } finally {
+            resumeUploadBtn.disabled = false
+            resumeUploadBtn.textContent = 'Upload'
+        }
+    })
+
     const submitBtn = el('button', { className: 'btn-primary', id: 'save-btn' }, 'Save to Pipeline')
     const alertBox = el('div', {})
 
@@ -232,12 +338,39 @@ async function renderJobView(root) {
         el('div', { className: 'field' }, el('label', { className: 'label', for: 'field-location' }, 'Location'), locationInput),
     )
     bodyEl.appendChild(
+        el('div', { className: 'field' },
+            el('div', { className: 'resume-field-header' },
+                el('label', { className: 'label', for: 'field-resume' }, 'Resume'),
+                resumeToggleBtn,
+            ),
+            resumeSelect,
+            resumeUploadRow,
+        ),
+    )
+    bodyEl.appendChild(
         el('div', { className: 'field' }, el('label', { className: 'label', for: 'field-url' }, 'Job URL'), urlInput),
     )
     bodyEl.appendChild(
         el('div', { className: 'field' }, el('label', { className: 'label', for: 'field-notes' }, 'Notes'), notesArea),
     )
     bodyEl.appendChild(submitBtn)
+
+    // Populate resume dropdown (non-blocking — form is already usable)
+    fetchResumes(token).then((resumes) => {
+        resumes.forEach((r) => {
+            resumeSelect.appendChild(el('option', { value: r.id }, r.versionName))
+        })
+    })
+
+
+
+    fetchRecentApplications(token).then((apps) => {
+        if (!apps.length) {
+            appsListEl.appendChild(el('div', { className: 'empty-state' }, 'No saved applications yet.'))
+            return
+        }
+        apps.forEach((app) => appsListEl.appendChild(renderApplicationRow(app)))
+    })
 
     // Save handler
     submitBtn.addEventListener('click', async () => {
@@ -269,6 +402,7 @@ async function renderJobView(root) {
                     ...(locationInput.value.trim() && { location: locationInput.value.trim() }),
                     ...(urlInput.value.trim() && { jobUrl: urlInput.value.trim() }),
                     ...(notesArea.value.trim() && { notes: notesArea.value.trim() }),
+                    ...(resumeSelect.value && { resumeId: resumeSelect.value }),
                 }),
             })
 
@@ -293,6 +427,10 @@ async function renderJobView(root) {
             urlInput.value = ''
             notesArea.value = ''
             platformSelect.value = ''
+            resumeSelect.value = ''
+
+            const saved = data.data ?? data
+            if (saved?.id) prependApplicationRow(saved, token)
         } catch {
             alertBox.appendChild(renderAlert('Network error. Is the API gateway running on port 8000?'))
         } finally {

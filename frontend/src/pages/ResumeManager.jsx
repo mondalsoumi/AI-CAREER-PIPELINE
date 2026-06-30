@@ -1,6 +1,7 @@
 import AppHeader from '../components/AppHeader'
 import { useEffect, useState, useCallback } from 'react'
 
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 function formatDate(iso) {
@@ -29,7 +30,7 @@ function SkeletonRow() {
 }
 
 // ─── Resume row ───────────────────────────────────────────────────────────────
-function ResumeRow({ resume, onDelete }) {
+function ResumeRow({ resume, onDelete, onToggle, expanded, applications }) {
     const [deleting, setDeleting] = useState(false)
 
     const handleDelete = async () => {
@@ -40,36 +41,83 @@ function ResumeRow({ resume, onDelete }) {
     }
 
     return (
-        <div className="flex items-center justify-between px-5 py-4 border border-gray-200 rounded-lg bg-white">
-            <div className="flex-1 min-w-0 mr-6">
-                <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                    {resume.versionName}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                    {resume._count?.applications ?? 0} application{resume._count?.applications !== 1 ? 's' : ''} · Uploaded {formatDate(resume.createdAt)}
-                </p>
+        <div className="border border-gray-200 rounded-lg bg-white">
+            <div
+                onClick={() => onToggle?.(resume.id)}
+                className="flex items-center justify-between px-5 py-4 cursor-pointer"
+            >
+                <div className="flex items-center flex-1 min-w-0 mr-6">
+                    <span
+                        className="text-xs mr-3 flex-shrink-0 transition-transform"
+                        style={{
+                            color: 'var(--text-secondary)',
+                            transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                        }}
+                    >
+                        ▶
+                    </span>
+                    <div className="min-w-0">
+                        <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                            {resume.versionName}
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                            {resume._count?.applications ?? 0} application{resume._count?.applications !== 1 ? 's' : ''} · Uploaded {formatDate(resume.createdAt)}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {resume.downloadUrl && (
+                        <a
+                            href={resume.downloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-medium px-3 py-1.5 border border-gray-200 rounded hover:bg-gray-50 transition-colors"
+                            style={{ color: 'var(--text-primary)' }}
+                        >
+                            Download
+                        </a>
+                    )}
+                    <button
+                        onClick={handleDelete}
+                        disabled={deleting}
+                        className="text-xs font-medium px-3 py-1.5 border border-red-200 rounded text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                    >
+                        {deleting ? 'Deleting…' : 'Delete'}
+                    </button>
+                </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-shrink-0">
-                {resume.downloadUrl && (
-                    <a
-                        href={resume.downloadUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-medium px-3 py-1.5 border border-gray-200 rounded hover:bg-gray-50 transition-colors"
-                        style={{ color: 'var(--text-primary)' }}
-                    >
-                        Download
-                    </a>
-                )}
-                <button
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className="text-xs font-medium px-3 py-1.5 border border-red-200 rounded text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-                >
-                    {deleting ? 'Deleting…' : 'Delete'}
-                </button>
-            </div>
+            {expanded && (
+                <div className="px-5 pb-4 border-t border-gray-100 pt-3">
+                    {applications.length === 0 ? (
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                            No applications linked.
+                        </p>
+                    ) : (
+                        <div className="space-y-2">
+                            {applications.map((app) => (
+                                <div
+                                    key={app.id}
+                                    className="flex justify-between items-center bg-gray-50 rounded p-3"
+                                >
+                                    <div>
+                                        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                                            {app.company}
+                                        </p>
+                                        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                            {app.jobTitle}
+                                        </p>
+                                    </div>
+                                    <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 font-medium">
+                                        {app.stage}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     )
 }
@@ -85,6 +133,8 @@ export default function ResumeManager({ onLogout }) {
     const [uploading, setUploading] = useState(false)
     const [message, setMessage] = useState('')
     const [error, setError] = useState('')
+    const [expandedResume, setExpandedResume] = useState(null)
+    const [resumeApplications, setResumeApplications] = useState({})
 
     // Redirect if no token
     useEffect(() => {
@@ -112,6 +162,43 @@ export default function ResumeManager({ onLogout }) {
     useEffect(() => {
         if (token) fetchResumes()
     }, [token, fetchResumes])
+    const loadResumeDetails = async (resumeId) => {
+        try {
+            const res = await fetch(
+                `${API_BASE}/api/resumes/${resumeId}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            )
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                throw new Error(data.error)
+            }
+
+            setResumeApplications(prev => ({
+                ...prev,
+                [resumeId]: data.data.applications || [],
+            }))
+        } catch (err) {
+            console.error(err)
+        }
+    }
+    const handleResumeClick = async (id) => {
+        if (expandedResume === id) {
+            setExpandedResume(null)
+            return
+        }
+
+        setExpandedResume(id)
+
+        if (!resumeApplications[id]) {
+            await loadResumeDetails(id)
+        }
+    }
 
     // ── Upload ──────────────────────────────────────────────────────────────────
     const handleUpload = async () => {
@@ -267,7 +354,14 @@ export default function ResumeManager({ onLogout }) {
                     ) : (
                         <div className="space-y-3">
                             {resumes.map((resume) => (
-                                <ResumeRow key={resume.id} resume={resume} onDelete={handleDelete} />
+                                <ResumeRow
+                                    key={resume.id}
+                                    resume={resume}
+                                    onDelete={handleDelete}
+                                    expanded={expandedResume === resume.id}
+                                    applications={resumeApplications[resume.id] || []}
+                                    onToggle={handleResumeClick}
+                                />
                             ))}
                         </div>
                     )}

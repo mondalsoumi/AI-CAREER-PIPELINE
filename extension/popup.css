@@ -236,3 +236,142 @@ body {
         transform: rotate(360deg);
     }
 }
+
+.resume-field-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+.resume-upload-row {
+    margin-top: 8px;
+    padding: 10px;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.resume-upload-row.hidden {
+    display: none;
+}
+
+.input-file {
+    width: 100%;
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.btn-secondary {
+    padding: 6px 10px;
+    background: var(--surface);
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #f0f7f3;
+}
+
+.btn-secondary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.section-title {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    margin: 18px 0 8px;
+}
+
+.apps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.app-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.app-row-info {
+    min-width: 0;
+}
+
+.app-row-company {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app-row-meta {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app-delete-btn {
+    flex-shrink: 0;
+    margin-left: 8px;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--error-border);
+    background: var(--error-bg);
+    color: var(--error-text);
+    border-radius: 5px;
+    font-size: 11px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.app-delete-btn:hover:not(:disabled) {
+    background: #fee2e2;
+}
+
+.app-delete-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.empty-state {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 10px 0;
+}

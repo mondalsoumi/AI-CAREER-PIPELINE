@@ -151,7 +151,10 @@ const getResumeById = async (req, res) => {
             where: { id, userId },
             include: {
                 applications: {
-                    select: { id: true, company: true, jobTitle: true, stage: true },
+                    select: { id: true, company: true, jobTitle: true, stage: true, appliedAt: true, sourcePlatform: true },
+                },
+                orderBy: {
+                    appliedAt: 'desc'
                 },
                 _count: { select: { applications: true } },
             },
