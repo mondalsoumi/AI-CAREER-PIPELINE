@@ -4,16 +4,14 @@ COPY package*.json ./
 RUN npm ci --only=production
 COPY prisma ./prisma
 RUN npx prisma generate
-COPY . .
 
 FROM node:18-alpine
 WORKDIR /app
-RUN apk add --no-cache openssl
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/src ./src
 COPY --from=builder /app/prisma ./prisma
-
-
-EXPOSE 8001
-CMD ["npm", "start"]
+# Copy src and utils — both needed, utils sits outside src/
+COPY src ./src
+COPY utils ./utils
+COPY package.json ./
+EXPOSE 8003
+CMD ["node", "src/index.js"]

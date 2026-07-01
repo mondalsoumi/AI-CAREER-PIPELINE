@@ -1,3 +1,5 @@
+
+
 FROM node:18-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
@@ -7,6 +9,7 @@ RUN npx prisma generate
 
 FROM node:18-alpine
 WORKDIR /app
+RUN apk add --no-cache openssl
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY src ./src
