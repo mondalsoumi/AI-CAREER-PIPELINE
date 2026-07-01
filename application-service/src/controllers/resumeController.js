@@ -146,15 +146,19 @@ const getResumeById = async (req, res) => {
     try {
         const userId = req.headers['x-user-id']
         const { id } = req.params
-
         const resume = await prisma.resume.findFirst({
             where: { id, userId },
             include: {
                 applications: {
-                    select: { id: true, company: true, jobTitle: true, stage: true, appliedAt: true, sourcePlatform: true },
-                },
-                orderBy: {
-                    appliedAt: 'desc'
+                    select: {
+                        id: true,
+                        company: true,
+                        jobTitle: true,
+                        stage: true,
+                        appliedAt: true,
+                        sourcePlatform: true,
+                    },
+                    orderBy: { appliedAt: 'desc' },  // ← moved inside applications, not a sibling of it
                 },
                 _count: { select: { applications: true } },
             },
