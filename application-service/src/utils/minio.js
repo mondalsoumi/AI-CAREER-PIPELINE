@@ -19,12 +19,17 @@ const PASS = process.env.MINIO_ROOT_PASSWORD || 'minioadmin'
 
 const s3 = new S3Client({
     endpoint: ENDPOINT,
-    region: 'us-east-1', // MinIO ignores region but SDK requires it
+    region: process.env.MINIO_REGION || 'us-east-1', // MinIO ignores region; R2 uses 'auto'
     credentials: {
         accessKeyId: USER,
         secretAccessKey: PASS,
     },
-    forcePathStyle: true, // required for MinIO
+    forcePathStyle: true, // required for MinIO; harmless for R2
+    // Required for Cloudflare R2 compatibility — newer SDK versions send
+    // checksum headers by default that R2 doesn't fully support.
+    // No effect on MinIO, safe to keep for both.
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
 })
 
 // ─── Ensure bucket exists on startup ─────────────────────────────────────────
