@@ -25,27 +25,42 @@ async function askGemini(prompt, retries = 2) {
                     generationConfig: {
                         temperature: 0.2,
                         topP: 0.8,
-                        maxOutputTokens: 4096,
+                        maxOutputTokens: 8192,
                     },
                 })
 
                 const result = await model.generateContent(prompt)
 
+                const finishReason = result.response.candidates?.[0]?.finishReason
+
                 if (DEBUG) {
                     console.log(`[Gemini] Model: ${modelName}`)
-                    console.log(
-                        `[Gemini] Finish Reason:`,
-                        result.response.candidates?.[0]?.finishReason
+                    console.log(`[Gemini] Finish Reason:`, finishReason)
+                }
+
+                // Always check finish reason, even outside DEBUG — a non-STOP
+                // reason (SAFETY, RECITATION, OTHER) means Gemini didn't
+                // complete the task normally, and JSON parsing will fail
+                // regardless of retries on the same input.
+                if (finishReason && finishReason !== 'STOP') {
+                    console.error(
+                        `[Gemini] Non-STOP finish reason on ${modelName}: ${finishReason}`
                     )
                 }
 
                 const text = result.response.text()
 
-                if (DEBUG) {
+                // Always log the raw response when things go wrong, even in
+                // production — this was previously gated behind DEBUG, which
+                // meant production failures were unexplainable.
+                const logRawResponse = () => {
                     console.log("\n========== GEMINI RAW RESPONSE ==========\n")
+                    console.log(`finishReason: ${finishReason}`)
                     console.log(text)
                     console.log("\n=========================================\n")
                 }
+
+                if (DEBUG) logRawResponse()
 
                 const cleaned = text
                     .replace(/^```json\s*/i, '')
@@ -57,6 +72,20 @@ async function askGemini(prompt, retries = 2) {
                 const end = cleaned.lastIndexOf('}')
 
                 if (start === -1 || end === -1) {
+                    if (!DEBUG) logRawResponse() // log even in prod on this failure path
+
+                    if (finishReason === 'SAFETY') {
+                        throw new Error(
+                            'The AI safety filter blocked this request. Try rephrasing the job description or resume text.'
+                        )
+                    }
+
+                    if (finishReason === 'MAX_TOKENS') {
+                        throw new Error(
+                            'The AI response was cut off before finishing. Try shortening the resume or job description.'
+                        )
+                    }
+
                     throw new Error('Gemini did not return valid JSON.')
                 }
 
@@ -66,6 +95,7 @@ async function askGemini(prompt, retries = 2) {
                     return JSON.parse(jsonString)
                 } catch (parseError) {
 
+                    if (!DEBUG) logRawResponse() // log even in prod on this failure path
                     if (DEBUG) {
                         console.error("[Gemini] JSON Parse Failed")
                         console.error(jsonString)
