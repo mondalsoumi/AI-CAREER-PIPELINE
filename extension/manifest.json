@@ -10,7 +10,7 @@
         "tabs"
     ],
     "host_permissions": [
-        "http://localhost:8000/*",
+        "https://ai-career-api-gateway.onrender.com/*",
         "https://www.linkedin.com/*",
         "https://linkedin.com/*",
         "https://wellfound.com/*",

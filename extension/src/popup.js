@@ -5,7 +5,7 @@
 // using chrome.scripting.executeScript with the extractors.js functions.
 // This runs AFTER the user opens the popup, so the SPA has already rendered.
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = 'https://ai-career-api-gateway.onrender.com'
 
 const SOURCE_PLATFORMS = [
     'LinkedIn', 'Naukri', 'Wellfound', 'Indeed',
@@ -362,7 +362,47 @@ async function renderJobView(root) {
         })
     })
 
+    // ─── Recent applications list ──────────────────────────────────────────
+    const appsSectionTitle = el('div', { className: 'section-title' }, 'Recent Applications')
+    const appsListEl = el('div', { className: 'apps-list' })
+    bodyEl.appendChild(appsSectionTitle)
+    bodyEl.appendChild(appsListEl)
 
+    function renderApplicationRow(app) {
+        const deleteBtn = el('button', { className: 'app-delete-btn', type: 'button', title: 'Delete application' }, '✕')
+        const row = el('div', { className: 'app-row' },
+            el('div', { className: 'app-row-info' },
+                el('div', { className: 'app-row-company' }, app.company),
+                el('div', { className: 'app-row-meta' }, `${app.jobTitle} · ${app.sourcePlatform || ''}`),
+            ),
+            deleteBtn,
+        )
+
+        deleteBtn.addEventListener('click', async () => {
+            if (!window.confirm(`Delete application at "${app.company}"? This cannot be undone.`)) return
+            deleteBtn.disabled = true
+            deleteBtn.textContent = '…'
+            try {
+                await deleteApplication(token, app.id)
+                row.remove()
+                if (!appsListEl.children.length) {
+                    appsListEl.appendChild(el('div', { className: 'empty-state' }, 'No saved applications yet.'))
+                }
+            } catch (err) {
+                deleteBtn.disabled = false
+                deleteBtn.textContent = '✕'
+                alert(err.message)
+            }
+        })
+
+        return row
+    }
+
+    function prependApplicationRow(app) {
+        const emptyState = appsListEl.querySelector('.empty-state')
+        if (emptyState) emptyState.remove()
+        appsListEl.insertBefore(renderApplicationRow(app), appsListEl.firstChild)
+    }
 
     fetchRecentApplications(token).then((apps) => {
         if (!apps.length) {
