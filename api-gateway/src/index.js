@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit')
 require('dotenv').config()
 
 const app = express()
+app.set('trust proxy', 1)
 const PORT = process.env.PORT || 8000
 
 // ─── Rate Limiter ─────────────────────────────────────────────────────────────
@@ -77,7 +78,8 @@ const injectUserId = (proxyReq, req) => {
 
 
 // ─── Auth Service ─────────────────────────────────────────────────────────────
-app.use('/api/auth', authLimiter, createProxyMiddleware({
+// app.use('/api/auth', authLimiter, createProxyMiddleware({ // old
+app.use('/api/auth', createProxyMiddleware({                 // temporary — no limiter
   target: AUTH_SERVICE_URL,
   changeOrigin: true,
   pathRewrite: (path) => '/auth' + path,
