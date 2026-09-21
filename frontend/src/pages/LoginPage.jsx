@@ -2,7 +2,6 @@ import { useState } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-// Eye icons as simple inline SVGs
 function EyeIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
@@ -31,9 +30,10 @@ function EyeOffIcon() {
 export default function LoginPage({ onLogin, onSwitchToRegister }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);  // ← new
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState('Signing in...');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,38 +45,67 @@ export default function LoginPage({ onLogin, onSwitchToRegister }) {
     }
 
     setLoading(true);
+    setLoadingMsg('Signing in...');
 
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 4000;
 
-      const data = await res.json();
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim(), password }),
+        });
 
-      if (!res.ok) {
-        setError(data.error || data.message || 'Login failed. Check your credentials.');
+        // Render hibernate-rate-limited — wait and retry
+        if (res.status === 429) {
+          if (attempt < MAX_RETRIES) {
+            setLoadingMsg(`Server waking up… retrying (${attempt}/${MAX_RETRIES - 1})`);
+            await new Promise((r) => setTimeout(r, RETRY_DELAY));
+            continue;
+          }
+          setError('The server is still waking up. Please wait 30 seconds and try again.');
+          setLoading(false);
+          return;
+        }
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setError(data.error || data.message || 'Login failed. Check your credentials.');
+          setLoading(false);
+          return;
+        }
+
+        const token = data.token ?? data.data?.token;
+        const userId = data.user?.id ?? data.data?.user?.id;
+
+        if (!token) {
+          setError('Login succeeded but no token was returned.');
+          setLoading(false);
+          return;
+        }
+
+        localStorage.setItem('token', token);
+        if (userId) localStorage.setItem('userId', userId);
+
+        onLogin();
+        return;
+
+      } catch {
+        if (attempt < MAX_RETRIES) {
+          setLoadingMsg(`Connecting… retrying (${attempt}/${MAX_RETRIES - 1})`);
+          await new Promise((r) => setTimeout(r, RETRY_DELAY));
+          continue;
+        }
+        setError('Unable to reach the server. Please check your connection and try again.');
+        setLoading(false);
         return;
       }
-
-      const token = data.token ?? data.data?.token;
-      const userId = data.user?.id ?? data.data?.user?.id;
-
-      if (!token) {
-        setError('Login succeeded but no token was returned.');
-        return;
-      }
-
-      localStorage.setItem('token', token);
-      if (userId) localStorage.setItem('userId', userId);
-
-      onLogin();
-    } catch {
-      setError('Unable to reach the server. Make sure the API gateway is running.');
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   return (
@@ -172,7 +201,7 @@ export default function LoginPage({ onLogin, onSwitchToRegister }) {
                       stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                   </svg>
-                  Signing in...
+                  {loadingMsg}
                 </>
               ) : 'Sign in'}
             </button>
