@@ -3,21 +3,11 @@ const express = require('express')
 const cors = require('cors')
 const { createProxyMiddleware } = require('http-proxy-middleware')
 const { authenticateGateway } = require('./middleware/gatewayAuthMiddleware')
-const rateLimit = require('express-rate-limit')
 require('dotenv').config()
 
 const app = express()
 app.set('trust proxy', 1)
 const PORT = process.env.PORT || 8000
-
-// ─── Rate Limiter ─────────────────────────────────────────────────────────────
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,                  // allow 100 requests per window
-  keyGenerator: (req) => req.ip, // keep IP-based but with generous limit
-  standardHeaders: true,
-  legacyHeaders: false,
-})
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:8001'
 const APPLICATION_SERVICE_URL = process.env.APPLICATION_SERVICE_URL || 'http://localhost:8002'
@@ -78,8 +68,7 @@ const injectUserId = (proxyReq, req) => {
 
 
 // ─── Auth Service ─────────────────────────────────────────────────────────────
-// app.use('/api/auth', authLimiter, createProxyMiddleware({ // old
-app.use('/api/auth', createProxyMiddleware({                 // temporary — no limiter
+app.use('/api/auth', createProxyMiddleware({
   target: AUTH_SERVICE_URL,
   changeOrigin: true,
   pathRewrite: (path) => '/auth' + path,
