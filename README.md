@@ -8,7 +8,7 @@ Track every application from "saved" to "offer," get AI feedback on a candidate'
 
 > The backend runs on free-tier hosting, which sleeps after periods of inactivity. The first request after idle time can take 30–60 seconds to respond while services spin back up — this is a hosting characteristic, not a bug.
 
-<!-- 📸 Add screenshots/GIFs here — see "Screenshots" section below -->
+![Kanban Pipeline Board](./screenshots/Kanbanboard.png)
 
 ---
 
@@ -193,8 +193,6 @@ All routes are proxied through the API gateway.
 
 ## Screenshots
 
-<!--
-Add screenshots here once you have them, e.g.:
 ### Login Page
 ![Login Page](./screenshots/login.png)
 
@@ -214,23 +212,23 @@ Add screenshots here once you have them, e.g.:
 ![Analytics](./screenshots/analytics.png)
 
 ### Interview Notes
-![Interview Notes](./screenshots/interview_notes(ai centre).png)
+![Interview Notes](./screenshots/interview_notes%28ai%20centre%29.png)
 
 ### AI Follow-up Email
-![AI Follow-up Email](./screenshots/follow-up email(ai centre).png)
+![AI Follow-up Email](./screenshots/follow-up%20email%28ai%20centre%29.png)
 
 ### AI Resume Match
 ![AI resume match](./screenshots/resume_match.png)
 
 ### Career Insights
-![Career Insights](./screenshots/career insights(ai centre).png)
+![Career Insights](./screenshots/career%20insights%28ai%20centre%29.png)
 
 ### Chrome Extension
-![Chrome Extension](./screenshots/chrome extension.png)
+![Chrome Extension](./screenshots/chrome%20extension.png)
 
 ### Resume Dashboard
-![Resume Dashboard](./screenshots/resume tracking.png)
--->
+![Resume Dashboard](./screenshots/resume%20tracking.png)
+
 
 ## License
 
